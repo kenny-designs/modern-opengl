@@ -1,0 +1,7 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2020-06-05T17:11:47-04:00
+
+====== Introduction ======
+
+Welcome! These are notes dedicated to understanding OpenGL with thanks to the Computer Graphics with Modern OpenGL and C++ course on Udemy.

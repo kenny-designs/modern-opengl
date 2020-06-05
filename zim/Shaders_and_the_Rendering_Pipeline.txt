@@ -1,0 +1,240 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2020-06-05T17:13:10-04:00
+
+====== Shaders and the Rendering Pipeline ======
+
+When it comes to OpenGL, we aren't merely writing instructions for the CPU to process. We are making use of our GPU to render graphics to the screen. In order for this to happen, we must make use of the **rendering pipeline **to make things as fast as possible. Shaders are a part of the rendering pipeline that we can make changes to.
+
+The rendering pipeline is a series of stages that take place in order to render an image to the screen.
+Four of these stages are programmable via //shaders.//
+1. Vertex Shader
+2. Fragment Shader
+3. Geometry Shader
+4. Tessellation Shader
+5. Compute Shader (this is a pretty new shader. Technically a 5th shader.)
+
+**Shaders** are pieces of code written in GLSL (OpenGL Shading Language), or HLSL (High-Level Shading Language) if you're using Direct3D. GLSL is based on C. GLSL and HLSL are rather similar.
+
+==== The Rendering Pipeline Stages ====
+There are 9 parts but some people may split the stages into more or less categories. This following list will do though.
+1. Vertex Specification
+2. Vertex Shader (programmable)
+3. Tessellation (programmable)
+4. Geometry Shader (programmable)
+5. Vertex Post-Processing
+	a. This is the end of all the vertex operations
+6. Primitive Assembly
+	a. Handles groups of vertices
+7. Rasterization
+	a. The conversion to fragments
+8. Fragment Shader (programmable)
+9. Per-Sample Operations
+	a. Operations performed on the fragments before being rendered to the screen
+
+Now that we have an overview of all of the stages, let us delve into each one in particular.
+
+==== Vertex Specification ====
+* A vertex (plural: vertices) is a point in space, usually defined with x, y, and z co-ordinates.
+* A **primitive** is a simple shape defined using one or more vertices.
+* Usually we use triangles, but we can also use points, lines, and quads.
+* **Vertex Specification**: Setting up the data of the vertices for the primitives we want to render.
+* Done in the application itself.
+* Uses VAOs (Vertex Array Objects) and VBOs (Vertex Buffer Objects).
+* VAO defines **what** data a vertex has (position, color, texture, normals, etc).
+	* Position is a VBO, color is a VBO, texture is a VBO, etc.
+	* All of this information gets stored on the RAM of the graphics card.
+		* That way, the fast GPU doesn't have to keep asking the slow CPU for all this data!
+* VBO defines the data itself.
+	* You can have multiple VBOs attached to a VAO
+* The benefit of having all these VAOs and VBOs is that it is readily available on the VRAM to keep things as fast as possible!
+* **Attribute Pointers** define where and how shaders can access vertex data.
+
+==== Vertex Specification: Creating VAO/VBO ====
+VAOs and VBOs are quite important but how do we create them? Well, we follow the following list:
+1. Generate a VAO ID
+	a. Despite dedicating some memory to the VAO on the GPU, we can't directly access that data. As such, we need an ID that we use to query the graphics card with.
+2. Bind the VAO with that ID
+	a. Now that ID will be associated with that VAO
+3. Generate a VBO ID
+4. Bind the VBO with that ID (now you're working on the chosen VBO attached to the chosen VAO).
+	a. OpenGL will assume that the previously bounded VAO corresponds with this newly bounded VBO.
+5. Attach the vertex data to that VBO.
+6. Define the Attribute Pointer formatting.
+	a. How is the data in the VBO formatted? Is it groups of 3 or is it all spaced apart? Is it made of floats or integers?
+7. Enable the Attribute Pointer
+8. Unbind the VAO and VBO, ready for the next object to be bound
+	a. Perhaps we just got done making a cube and now we want to move on to a pyramid shaped primitive.
+
+==== Vertex Specification: Initiating Draw ====
+1. Activate Shader Program you want to use.
+2. Bind VAO of object you want to draw.
+3. Call glDrawArrays, which initiates the rest of the pipeline. 
+
+Hurray! Now we are beginning the rendering pipeline! Next, we deal with shaders.
+
+==== Vertex Shader ====
+At this point, the pipeline is in operation! We do the following:
+1. Handles vertices individually.
+	a. We can handle vertex data and do things such as apply a model matrix, view matrix, offset the vertices some, etc.
+2. NOT optional.
+	a. Unlike the other shaders, we must manually define the vertex shader even if it is incredibly basic.
+3. Must store something in gl_Position as it is used by later stages.
+	a. Whatever goes into gl_Position is assumed to the be final position of that vertex.
+4. Can specify additional outputs that can be picked up and used by user-defined shaders later in the pipeline.
+	a. For example, we could specify something for color and make use of it in our fragment shader.
+5. Inputs consist of the vertex data itself.
+	a. This includes the positions of the vertices themself, texture coordinates, etc.
+
+The following is an example of a very simple Vertex Shader written in GLSL.
+{{{code: lang="cg" linenumbers="True"
+#version 330 // define the version of GLSL that we are using
+
+// layout and location are a bit new
+// by setting location to 0, we won't have to query it in the
+// application code. Without layout and location, we would have
+// to constantly query the position.
+// With location set to 0, we can easily bind the data to position 0
+// in the application code.
+//
+// 'in' is a keyword that means input.
+// 'vec3' is a vector 3 consisting of three values: x, y, and z
+// 'pos' is just the name of the variable we created
+layout (location = 0) in vec3 pos;
+
+void main()
+{
+	// gl_Position actually requires 4 values thus we use a vec4.
+	gl_Position = vec4(pos, 1.0);
+}
+}}}
+
+
+==== Tessellation ====
+* Allows you to divide up data into smaller primitives.
+	* For example, if you're using quads you could divide them up into triangles.
+	* This could assist with Level of Detail (LOD) where the closer you get you split it into more and more triangles.
+* Relatively new shader type, appeared in OpenGL 4.0.
+* Can be used to add higher levels of detail dynamically.
+	* A lot of games use it for things such as oceans. Water that is constantly moving.
+* Won't be used in this course. 
+
+==== Geometry Shader ====
+This shader isn't usually taught in a lot of tutorials online but can have some uses.
+* Vertex Shader handles //individual// vertices, Geometry Shaders handles **primitives (groups of vertices).**
+* Takes primitives then //emits// their vertices to create the given primitive, or even new primitives.
+	* This could be used for something such as an explosion.
+* Can alter data given to it to modify given primitives, or even create new ones.
+* Can even alter the primitive type (points, lines, triangles, etc)
+* Will use it once briefly in this course.
+
+==== Vertex Post-Processing ====
+Next up, we have these two stages:
+* Transform Feedback (if enabled by the programmer):
+	* Result of Vertex and Geometry stages saved to buffers for later use.
+		* This essentially means that if we already know what the results are from the first four stages, we can just buffer and use those again on the next cycle.
+	* We won't be using this though... Not much need for this for us throughout this course.
+* Clipping:
+	* Primitives that won't be visible are removed (don't want to draw things we can't see!).
+	* Positions converted from //clip-space// to //window space// (more on this later).
+
+==== Primitive Assembly ====
+* Vertices are converted into a series of primitives.
+* So if rendering triangles... 6 vertices would become 2 triangles (3 vertices each).
+* Face culling.
+	* In the case of a triangle, we'll only ever see one side within 3D space. Face culling does away with the side we can't see.
+	* In another case, imagine we are drawing a cube. In a closed cube, we can't see the insides of it so face culling makes sure we don't draw that!
+* **Face culling** is the removal of primitives that can't be seen, or are facing //away// from the viewer. We don't want to draw something if we can't see it!
+
+==== Rasterization ====
+* Converts primitives into //fragments.//
+* **Fragments** are pieces of data for each pixel, obtained from the rasterization process.
+	* Fragments are a bit difficult to describe. They aren't pixels in themselves. Instead, they are data for pixels such as color.
+* Fragment data will be interpolated based on its position relative to each vertex.
+
+==== Fragment Shader ====
+* Handles data for each fragment.
+* Is optional but it's rare not to use it. Exceptions are cases where only depth or stencil data is required (more on depth data later).
+* Most important output is the color of the pixel that the fragment covers.
+* Simplest OpenGL programs usually have a Vertex Shader and a Fragment Shader.
+
+The GLSL code for a basic Fragment Shader looks like this:
+{{{code: lang="cg" linenumbers="True"
+#version 330
+
+// We could name this anything we want. Usually a
+// fragment shader has a single output. The code
+// will assume that this is the output we want
+// to give for the color regardless if we named
+// the variable color or even 'foobarmegasegayeet'
+out vec4 color;
+
+void main()
+{
+	// output is in terms of RGBA
+	color = vec4(1.0, 0.0, 0.0, 1.0);
+}
+}}}
+
+Something special here is that if we did output anything from the Vertex Shader then we can make use of it here with the 'in' keyword!
+
+==== Per-Sample Operations ====
+* Series of tests ran to see if the fragment should be drawn.
+* Most important test: **Depth test.** Determines if something is in front of the point being drawn.
+* **Color Blending: **Using defined operations, fragment colors are //blended// together with overlapping fragments. Usually used to handle transparent objects.
+	* Objects such as windows on a car or something.
+* Fragment data written to currently bound Framebuffer (usually the default buffer, more on this later).
+* Lastly, in the application code the user usually defines a buffer swap here, putting the newly updated Framebuffer to the front.
+* The pipeline is complete!
+
+At this point, we go through the pipeline again and again until we terminate the program.
+
+==== On the Origin of Shaders... ====
+* Shader Programs are a group of shaders (Vertex, Tessellation, Geometry, Fragment...) associated with one another.
+	* Perhaps instead of the word 'group,' think of a shader program as a combination of all of the shaders listed above.
+	* We could switch around shader programs even! Perhaps one implements special lighting effects where else another is very bland.
+* They are created in OpenGL via a series of functions.
+
+==== Creating a Shader Program ====
+To create a Shader Program, we follow this pattern:
+1. Create empty program.
+2. Create empty shaders.
+3. Attach shader source code to shaders.
+4. Compile shaders.
+5. Attach shaders to program.
+6. Link program (creates executables from shaders and links them together).
+	a. Kind of like a .exe but not quite.
+7. Validate program (optional but highly advised because debugging shaders is a pain).
+	a. This helps us to make sure there are no bugs or syntactical errors
+	b. Since shaders run on the graphics card itself, we can't set breakpoints or anything to debug with. Instead, we have to rely on the error messages that we get back.
+
+==== Using a Shader Program ====
+* When you create a shader, an ID is given (like with VAOs and VBOs).
+	* To reiterate, after we created our shader using the above steps, we then receive an ID associated with that newly created shader!
+* Simply call glUseProgram(shaderID)
+* All draw calls from then on will use that shader, glUseProgram is used on a new shaderID, or on '0' (meaning //no shader//).
+
+==== Summary ====
+* Rendering Pipeline consists of several stages.
+* Four stages are programmable via shaders (Vertex, Tessellation, Geometry, and the Fragment).
+* Vertex Shader is mandatory.
+* Vertices: User-defined points in space
+	* Handled by the Vertex Shader
+* Primitives: Groups of vertices that make a simple shape (usually a triangle).
+	* Handled by the Geometry Shader
+* Fragments: Per-pixel data created from primitives.
+	* Handled by the Fragment Shader
+* Vertex Array Object (VAO): What data a vertex has.
+* Vertex Buffer Object (VBO): The vertex data itself (that of which we place in the VAO).
+* Shader programs are created with at least a Vertex Shader and then activated before use.
+	* Can be switched off by passing in the value 0.
+
+Further Reading: Check out the OpenGL wiki (perhaps called the Kronos Wiki) for a much more detailed explanation of all of these stages. 
+
+
+
+
+
+
+
+
