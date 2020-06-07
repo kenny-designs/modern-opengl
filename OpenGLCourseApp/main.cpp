@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <cmath> // abs()
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -8,16 +9,24 @@
 const GLint WIDTH = 800, HEIGHT = 600;
 
 // Track the IDs
-GLuint VAO, VBO, shader;
+GLuint VAO, VBO, shader, uniformXMove;
+
+// Controlling triangle movement
+bool direction = true;
+float triOffset = 0.0f;
+float triMaxoffset = 0.7f;
+float triIncrement = 0.005f;
 
 // Vertex Shader
-static const char* vShader = "                                \n\
-#version 330                                                  \n\
-                                                              \n\
-layout (location = 0) in vec3 pos;                            \n\
-void main()                                                   \n\
-{                                                             \n\
-  gl_Position = vec4(0.4 * pos.x, 0.4 * pos.y, pos.z, 1.0f);  \n\
+static const char* vShader = "                                        \n\
+#version 330                                                          \n\
+                                                                      \n\
+layout (location = 0) in vec3 pos;                                    \n\
+uniform float xMove;                                                  \n\
+                                                                      \n\
+void main()                                                           \n\
+{                                                                     \n\
+  gl_Position = vec4(0.4 * pos.x + xMove, 0.4 * pos.y, pos.z, 1.0f);  \n\
 }";
 
 // Fragment Shader
@@ -139,6 +148,9 @@ void CompileShader()
     printf("Error validating program: '%s'\n", eLog);
     return;
   }
+
+  // get the uniform id for the xMove uniform
+  uniformXMove = glGetUniformLocation(shader, "xMove");
 }
 
 int main()
@@ -202,12 +214,28 @@ int main()
     // Get and handle user input events
     glfwPollEvents();
 
+    if (direction)
+    {
+      triOffset += triIncrement;
+    }
+    else
+    { 
+      triOffset -= triIncrement;
+    }
+
+    if (abs(triOffset) >= triMaxoffset)
+    {
+      direction = !direction;
+    }
+
     // Clear window
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     // use our shader program
     glUseProgram(shader);
+
+    glUniform1f(uniformXMove, triOffset);
 
     // bind our VAO
     glBindVertexArray(VAO);

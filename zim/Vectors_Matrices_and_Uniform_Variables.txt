@@ -217,3 +217,7 @@ etc...
 * GLM is used to handle matrix calculations.
 * Uniform variables pass global data to shaders.
 * Need to obtain a uniform's location then bind data to it.
+
+==== Extra Notes ====
+An **attribute variable** is distinct for each vertex that is pass through the shader.
+A uniform variable on the other hand is constant throughout the whole thing.
