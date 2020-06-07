@@ -23,15 +23,15 @@ float triMaxoffset = 0.7f;
 float triIncrement = 0.005f;
 
 // Vertex Shader
-static const char* vShader = "                                        \n\
-#version 330                                                          \n\
-                                                                      \n\
-layout (location = 0) in vec3 pos;                                    \n\
-uniform mat4 model;                                                   \n\
-                                                                      \n\
-void main()                                                           \n\
-{                                                                     \n\
-  gl_Position = model * vec4(0.4 * pos.x, 0.4 * pos.y, pos.z, 1.0f);  \n\
+static const char* vShader = "                    \n\
+#version 330                                      \n\
+                                                  \n\
+layout (location = 0) in vec3 pos;                \n\
+uniform mat4 model;                               \n\
+                                                  \n\
+void main()                                       \n\
+{                                                 \n\
+  gl_Position = model * vec4(pos, 1.0f);          \n\
 }";
 
 // Fragment Shader
@@ -219,6 +219,7 @@ int main()
     // Get and handle user input events
     glfwPollEvents();
 
+    // move the triangle
     if (direction)
     {
       triOffset += triIncrement;
@@ -228,6 +229,7 @@ int main()
       triOffset -= triIncrement;
     }
 
+    // bounce the triangle off the sides of the window
     if (abs(triOffset) >= triMaxoffset)
     {
       direction = !direction;
@@ -249,11 +251,16 @@ int main()
     // rotate 45 degrees on the z-axis
     model = glm::rotate(model, 45.0f * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
 
+    // scale the model
+    model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));
+
+    // apply the transformations
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 
     // bind our VAO
     glBindVertexArray(VAO);
 
+    // draw the triangle
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     // unbind our VAO
