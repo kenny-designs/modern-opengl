@@ -7,6 +7,7 @@
 // Window dimensions
 const GLint WIDTH = 800, HEIGHT = 600;
 
+// Track the IDs
 GLuint VAO, VBO, shader;
 
 // Vertex Shader

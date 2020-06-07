@@ -17,7 +17,7 @@ Four of these stages are programmable via //shaders.//
 **Shaders** are pieces of code written in GLSL (OpenGL Shading Language), or HLSL (High-Level Shading Language) if you're using Direct3D. GLSL is based on C. GLSL and HLSL are rather similar.
 
 ==== The Rendering Pipeline Stages ====
-There are 9 parts but some people may split the stages into more or less categories. This following list will do though.
+There are 9 parts but some people may split the stages into more or less categories. This following list will do:
 1. Vertex Specification
 2. Vertex Shader (programmable)
 3. Tessellation (programmable)
