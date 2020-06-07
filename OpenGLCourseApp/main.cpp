@@ -11,6 +11,7 @@
 
 // Window dimensions
 const GLint WIDTH = 800, HEIGHT = 600;
+const float toRadians = 3.14159265f / 180.0f;
 
 // Track the IDs
 GLuint VAO, VBO, shader, uniformModel;
@@ -241,7 +242,12 @@ int main()
 
     // create an identity matrix
     glm::mat4 model(1.0f);
+
+    // translate the triangle by the offset
     model = glm::translate(model, glm::vec3(triOffset, 0.0f, 0.0f));
+
+    // rotate 45 degrees on the z-axis
+    model = glm::rotate(model, 45.0f * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
 
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 
