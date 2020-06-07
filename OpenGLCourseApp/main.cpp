@@ -14,13 +14,17 @@ const GLint WIDTH = 800, HEIGHT = 600;
 const float toRadians = 3.14159265f / 180.0f;
 
 // Track the IDs
-GLuint VAO, VBO, shader, uniformModel;
+GLuint VAO, VBO, IBO, shader, uniformModel;
 
 // Controlling triangle movement
 bool direction = true;
 float triOffset = 0.0f;
 float triMaxoffset = 0.7f;
 float triIncrement = 0.005f;
+
+// Controlling triangle rotation
+float curRot = 0.0f;
+float rotIncrement = 0.5f;
 
 // Vertex Shader
 static const char* vShader = "                    \n\
@@ -54,9 +58,18 @@ void main()                                       \n\
 
 void CreateTriangle()
 {
+  // The indices that make up our pyramid
+  unsigned int indices[] = {
+    0, 3, 1,
+    1, 3, 2,
+    2, 3, 0,
+    0, 1, 2
+  };
+
   // define the vertices for the triangle
   GLfloat vertices[] = {
     -1.0f, -1.0f, 0.0f,
+     0.0f, -1.0f, 1.0f,
      1.0f, -1.0f, 0.0f,
      0.0f,  1.0f, 0.0f
   };
@@ -64,6 +77,12 @@ void CreateTriangle()
   // adds one vertex array to the VRAM and obtain the ID for it
   glGenVertexArrays(1, &VAO);
   glBindVertexArray(VAO);
+
+  // setup the IBO
+  // The IBO and VBO are connected through the VAO by the way!
+  glGenBuffers(1, &IBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO); // element and index are interchangable here
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
   // similar to the VAO, we create a single buffer and obtain the ID for it
   glGenBuffers(1, &VBO);
@@ -78,9 +97,10 @@ void CreateTriangle()
   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
   glEnableVertexAttribArray(0);
 
-  // Unbind out VBO and VAO by setting to 0
+  // Unbind the VAO, VBO, and IBO
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   glBindVertexArray(0);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 void AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType)
@@ -213,6 +233,9 @@ int main()
     return 1;
   }
 
+  // enable depth testing
+  glEnable(GL_DEPTH_TEST);
+
   // Setup viewport size
   glViewport(0, 0, bufferWidth, bufferHeight);
 
@@ -241,9 +264,16 @@ int main()
       direction = !direction;
     }
 
+    // rotate the triangle
+    curRot += rotIncrement;
+    if (curRot >= 360.0f)
+    {
+      curRot -= 360.0f;
+    }
+
     // Clear window
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // use our shader program
     glUseProgram(shader);
@@ -255,7 +285,7 @@ int main()
     //model = glm::translate(model, glm::vec3(triOffset, 0.0f, 0.0f));
 
     // rotate 45 degrees on the z-axis
-    //model = glm::rotate(model, 45.0f * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::rotate(model, curRot * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
 
     // scale the model
     model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));
@@ -266,8 +296,14 @@ int main()
     // bind our VAO
     glBindVertexArray(VAO);
 
-    // draw the triangle
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    // bind our IBO
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+
+    // draw
+    glDrawElements(GL_TRIANGLES, 12, GL_UNSIGNED_INT, 0);
+
+    // unbind our IBO
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     // unbind our VAO
     glBindVertexArray(0);
