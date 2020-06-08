@@ -14,7 +14,7 @@ const GLint WIDTH = 800, HEIGHT = 600;
 const float toRadians = 3.14159265f / 180.0f;
 
 // Track the IDs
-GLuint VAO, VBO, IBO, shader, uniformModel;
+GLuint VAO, VBO, IBO, shader, uniformModel, uniformProjection;
 
 // Controlling triangle movement
 bool direction = true;
@@ -27,19 +27,20 @@ float curRot = 0.0f;
 float rotIncrement = 0.5f;
 
 // Vertex Shader
-static const char* vShader = "                    \n\
-#version 330                                      \n\
-                                                  \n\
-layout (location = 0) in vec3 pos;                \n\
-                                                  \n\
-out vec4 vCol;                                    \n\
-                                                  \n\
-uniform mat4 model;                               \n\
-                                                  \n\
-void main()                                       \n\
-{                                                 \n\
-  gl_Position = model * vec4(pos, 1.0f);          \n\
-  vCol = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);      \n\
+static const char* vShader = "                          \n\
+#version 330                                            \n\
+                                                        \n\
+layout (location = 0) in vec3 pos;                      \n\
+                                                        \n\
+out vec4 vCol;                                          \n\
+                                                        \n\
+uniform mat4 model;                                     \n\
+uniform mat4 projection;                                \n\
+                                                        \n\
+void main()                                             \n\
+{                                                       \n\
+  gl_Position = projection * model * vec4(pos, 1.0f);   \n\
+  vCol = vec4(clamp(pos, 0.0f, 1.0f), 1.0f);            \n\
 }";
 
 // Fragment Shader
@@ -180,8 +181,9 @@ void CompileShader()
     return;
   }
 
-  // get the uniform id for the model uniform
+  // get uniform IDs
   uniformModel = glGetUniformLocation(shader, "model");
+  uniformProjection = glGetUniformLocation(shader, "projection");
 }
 
 int main()
@@ -242,6 +244,13 @@ int main()
   CreateTriangle();
   CompileShader();
 
+  // Prepare the projection matrix
+  glm::mat4 projection = glm::perspective(
+      45.0f,
+      (GLfloat)bufferWidth / (GLfloat)bufferHeight,
+      0.1f,
+      100.0f);
+
   // loop until window closed
   while (!glfwWindowShouldClose(mainWindow))
   {
@@ -282,7 +291,7 @@ int main()
     glm::mat4 model(1.0f);
 
     // translate the triangle by the offset
-    //model = glm::translate(model, glm::vec3(triOffset, 0.0f, 0.0f));
+    model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.5f));
 
     // rotate 45 degrees on the z-axis
     model = glm::rotate(model, curRot * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -292,6 +301,7 @@ int main()
 
     // apply the transformations
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+    glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
 
     // bind our VAO
     glBindVertexArray(VAO);
