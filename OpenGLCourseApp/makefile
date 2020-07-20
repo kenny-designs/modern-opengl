@@ -7,7 +7,7 @@ CFLAGS=-o main.out -lGL -lGLU -lglfw3 -lGLEW -lX11 \
 # LIBS=-L../includes/GLEW/lib
 
 opengl: main.cpp Mesh.cpp Shader.cpp
-	$(CC) main.cpp Mesh.cpp Shader.cpp $(CFLAGS)
+	$(CC) main.cpp Mesh.cpp Shader.cpp Window.cpp $(CFLAGS)
 	./main.out
 
 .PHONY: clean
