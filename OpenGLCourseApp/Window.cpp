@@ -65,6 +65,8 @@ int Window::initialize()
 
   // Setup viewport size
   glViewport(0, 0, bufferWidth, bufferHeight);
+
+  return 0;
 }
 
 Window::~Window()
