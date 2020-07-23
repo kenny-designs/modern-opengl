@@ -26,4 +26,9 @@ class Window
     GLFWwindow *mainWindow;
     GLint width, height;
     GLint bufferWidth, bufferHeight;
+
+    bool keys[1024]; // covering the range of ASCII codes
+
+    void createCallbacks();
+    static void handleKeys(GLFWwindow* window, int key, int code, int action, int mode);
 };
