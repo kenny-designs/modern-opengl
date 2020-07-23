@@ -60,6 +60,8 @@ int Window::initialize()
 
   // Handle Key + Mouse Input
   createCallbacks();
+  // Hide the cursor like in most games
+  glfwSetInputMode(mainWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
   // Allow modern extension features
   glewExperimental = GL_TRUE;
@@ -89,7 +91,23 @@ int Window::initialize()
 void Window::createCallbacks()
 {
   glfwSetKeyCallback(mainWindow, handleKeys);
+  glfwSetCursorPosCallback(mainWindow, handleMouse);
 }
+
+GLfloat Window::getXChange()
+{
+  GLfloat theChange = xChange;
+  xChange = 0.0f;
+  return theChange;
+}
+
+GLfloat Window::getYChange()
+{
+  GLfloat theChange = yChange;
+  yChange = 0.0f;
+  return theChange;
+}
+
 
 void Window::handleKeys(GLFWwindow* window, int key, int code, int action, int mode)
 {
@@ -111,6 +129,25 @@ void Window::handleKeys(GLFWwindow* window, int key, int code, int action, int m
       theWindow->keys[key] = false;
     }
   }
+}
+
+void Window::handleMouse(GLFWwindow* window, double xPos, double yPos)
+{
+  Window* theWindow = static_cast<Window*>(glfwGetWindowUserPointer(window));
+
+  if (theWindow->mouseFirstMoved)
+  {
+    theWindow->lastX = xPos;
+    theWindow->lastY = yPos;
+    theWindow->mouseFirstMoved = false;
+  }
+
+  theWindow->xChange = xPos - theWindow->lastX;
+  // we do this to avoid inverted up and down movement
+  theWindow->yChange = theWindow->lastY - yPos; 
+
+  theWindow->lastX = xPos;
+  theWindow->lastY = yPos;
 }
 
 Window::~Window()
