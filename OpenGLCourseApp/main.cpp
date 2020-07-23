@@ -76,7 +76,7 @@ int main()
   // Prepare the projection matrix
   glm::mat4 projection = glm::perspective(
       45.0f,
-      mainWindow.getBufferWidth() /mainWindow.getBufferHeight(), 
+      mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 
       0.1f,
       100.0f);
 

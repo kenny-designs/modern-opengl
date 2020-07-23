@@ -1,0 +1,130 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2020-07-22T23:55:03-04:00
+
+====== Camera and User Input ======
+Created Wednesday 22 July 2020
+
+==== Camera/View Space ====
+* The Camera processes the scene as seen in "View Space."
+* View Space is the co-ordinate system with each vertex as seen from the camera.
+* Use a View Matrix to convert from World Space to View Space.
+* View Matrix requires 4 values: Camera Position, Direction, Right and Up.
+	* This essentially defines the axis that our camera can move on.
+	* Also, the world essentially moves around our camera and not the other way around.
+		* In that case, if you want to move the camera back 3 units you should move the world forward 3 units.
+
+* **Camera Position: **Simply the position of the camera.
+* **Direction:** The direction the camera is looking in.
+* **Direction Vector** actually points in opposite direction of the intuitive "direction."
+* **Right: **Vector facing right of the camera, defines //x-axis//. Can calculate by doing cross product of Direction and "up" vector [0, 1, 0].
+* **Up**: Upwards relative to where camera is facing. Can calculate by doing cross product of Direction and Right vectors.
+
+{{../images/camera-position.png}}
+
+==== Converting to View Space ====
+* Place values in  matrices to calculate View Matrix.
+* View Matrix applied to a vertex will convert it to View Space.
+* Fortunately, GLM has a function to do all of this.
+* glm::mat4 viewMatrix = glm::lookAt(position, target, up);
+
+{{./equation.png?type=equation}}
+
+The R is for our right vector, U is for our up vector, and D is for our direction vector.
+P is our position vector. They are negative because we are moving in the opposite direction. Remember, we are moving the world around the camera and not the other way around.
+
+Instead of having to remember all of this, you can use the glm::lookAt function.
+
+==== GLM lookAt ====
+* glm::lookAt(position, target, up);
+* position = Camera Position
+* target = Point for camera to look at.
+	* Usually just defined as some point in front of us.
+	* A general direction works well here too.
+* target is usually defined as the camera's position with a direction added on to it. Effectively saying "look in front."
+* up = The upwards direction of the **WORLD**, not the camera. lookAt uses this to calculate 'right' and 'up' relative to the camera.
+
+To reiterate, the target and the up direction for the world allows us to calculate the right and up for the camera.
+
+==== Using the View Matrix ====
+* Bind the View Matrix to a uniform on the shader.
+* Apply it between the projection and model matrices.
+* gl_Position = projection * view * model * vec4(pos, 1.0);
+	* Remember, we start in Local Space. Model takes us to World Space. View takes us to View Space. Projection takes us to Clip Space.
+* Remember: **ORDER MATTERS.**
+* Multiplying the projection, view, and model matrices in a different order will not work!
+	* Remember, the multiplication occurs from right to left.
+
+==== Input: Moving the Camera ====
+* Just need to change camera position!
+* GLFW: glfwGetKey(window, GLFW_KEY_W);
+
+* SDL: Check for event, check if KEYDOWN event, check which key pressed...
+* See code video for more detail!
+
+* Then add value to camera position while key held.
+* Different CPU speeds?
+* Will move fast on some computers, slow on others!
+
+Remember, if we don't multiply by delta time then the rate in which the camera moves will be based upon the processing speed of one's computer. As such, the camera could move slower or faster depending.
+
+==== Input: Delta Time ====
+* Broad concept, can't explain it all here.
+* Basic idea: Check how much time passed since last loop, apply maths based on this to keep consistent speeds.
+
+* deltaTime = currentTime - lastTime;
+lastTime = currentTime;
+* Then multiply the camera's movement speed by deltaTime!
+* For more information:
+	* https://gafferongames.com/post/fix_your_timestep/
+
+==== Input: Turning ====
+* Three types of angle.
+* **Pitch**: Looking up and down.
+* **Yaw:** Looking left and right.
+* **Roll: **Like a plane doing a barrel roll (we won't be using this).
+* Pitching needs to rotate the view up and down using an axis relative to the yaw.
+* Yaw will only ever rotate us around our up axis (y-axis).
+
+==== Input: Turning — Pitch ====
+* Pitching axis will **depend** on yaw... need to update x, y, and z.
+* y = sin(pitch)
+* x = cos(pitch)
+* z = cos(pitch)
+* Remember: We're updating x and z because the yaw could have the camera facing along a combination of them.
+
+==== Input: Turning — Yaw ====
+* We COULD base yaw on pitch too, but would be unrealistic for this kind of simulation, so we won't.
+* Therfore: We only update x and z.
+* x = cos(yaw)
+* z = sin(yaw)
+
+Remember, we only calculate for x and z because we are rotating around the y-axis! 
+
+==== Input: Turning — Pitch and Yaw ====
+* Combine the values from pitch and yaw to get a direction vector with those properties.
+* x = cos(pitch) × cos(yaw)
+* y = sin(pitch)
+* z = cos(pitch) × sin(yaw)
+
+* Vector [x, y, z] will have the given pitch and yaw!
+* Update Camera direction with new vector.
+
+==== Input: Turning ====
+* GLFW: glfwSetCursorPosCallback(window, callback);
+	* Store old mouse position, compare to new position. Use difference to decide pitch/yaw change.
+
+* SDL: Check for SDL_MOUSEMOTION event.
+	* Call SDL_GetMouseState(&x, &y);
+	* Then do the same as above.
+
+==== Summary ====
+* View Matrix requires Position, Direction, Right, and Up vectors.
+* glm::lookAt handles it for us.
+* To move camera, alter position on key press.
+* Delta Time allows consistent speeds across systems.
+* Turning uses Pitch and Yaw (and Roll in some cases).
+* Use Pitch and Yaw to calculate new direction vectors.
+* Compare last and current mouse positions to determine how Pitch and Yaw change.
+
+
