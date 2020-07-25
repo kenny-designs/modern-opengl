@@ -19,7 +19,7 @@ class Camera
         GLfloat startMoveSpeed,
         GLfloat startTurnSpeed);
 
-    void keyControl(bool* keys);
+    void keyControl(bool* keys, GLfloat deltaTime);
 
     glm::mat4 calculateViewMatrix();
 
