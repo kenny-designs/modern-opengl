@@ -80,7 +80,7 @@ int main()
       -90.0f,
       0.0f,
       5.0f,
-      1.0f);
+      0.5f);
 
   GLuint uniformProjection = 0,
          uniformModel = 0,
@@ -105,6 +105,7 @@ int main()
 
     // User input for the camera
     camera.keyControl(mainWindow.getKeys(), deltaTime);
+    camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
 
     // Clear window
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);

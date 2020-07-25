@@ -4,6 +4,7 @@ Window::Window()
 {
   width = 800;
   height = 600;
+  mouseFirstMoved = true;
 
   for (size_t i = 0; i < 1024; i++)
   {
@@ -15,6 +16,7 @@ Window::Window(GLint windowWidth, GLint windowHeight)
 {
   width = windowWidth;
   height = windowHeight;
+  mouseFirstMoved = true;
 
   for (size_t i = 0; i < 1024; i++)
   {
