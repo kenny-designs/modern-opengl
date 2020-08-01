@@ -1,0 +1,172 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2020-08-01T15:50:19-04:00
+
+====== Textures and Image Loading ======
+Created Saturday 01 August 2020
+
+==== Textures ====
+* Textures are images used to add extra detail to an object.
+* Textures can also be used to hold generic data... but that's a more advanced topic!
+* Usually 2D but can also have 1D and 3D textures.
+* Points on textures are //texels//, not pixels.
+* Texels are defined between 0 and 1.
+	* Texels are more of a percentage instead of position like a pixel is.
+
+==== More on Textures ====
+* So to sample a point at the top-middle you reference texel (0.5, 1)
+* Map texels to vertices.
+	* So, (0.5, 1) gets mapped to a vertice and then the texture is interpolated between that part of the texel and the vertice.
+* **Interpolation** over each fragment will calculate appropriate texels in between the assigned texels.
+	* I want to emphasize the importance of interpolation.
+
+{{../images/texel-bricks.png}}
+The above is an example of a texel. As you may be able to tell, the origin is at the bottom left which is (0, 0). The top right is (1, 1).
+
+==== Texture Objects ====
+* Creating textures works much like creating VBOs/VAOs
+* glGenTextures(1, &texture);
+* glBindTexture(GL_TEXTURE_2D, texture);
+* There are different types of texture, such as:
+	* GL_TEXTURE_1D
+	* GL_TEXTURE_3D,
+	* GL_TEXTURE_CUBE_MAP
+* We will deal with the latter, later.
+
+After binding a texture, we can also write to it!
+
+==== Texture Objects ====
+* glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+* First Argument: Texture Target (what we have bound our texture to)
+* Second Argument: Mipmap Level (see next slide)
+* Third Argument: Format of the stored data. RBG is just Red, Green, and Blue values. Also, RGBA which has an Alpha Channel (transparency). Several others, not important here.
+* Fourth and Fifth Argument: Width and height of the texture.
+* Sixth Argument: This should always be 0. Legacy concept handling texture borders that [[OpenGL]] doesn't utilize anymore.
+* Seventh Argument: Format of the data being loaded (as opposed to stored on the third argument).
+* Eight Argument: The data type of the values (int, float, byte, etc).
+* Ninth Argument: The data itself.
+
+==== MipMaps ====
+* Resolution limitations for textures.
+* The closer we get to an object, the more pixelated the texture becomes. Further away, it attempts to render multiple texels on one pixel!
+* Solution: Create multiple versions of image at different resolutions and switch between them based on distance!
+
+{{../images/mipmaps.png}}
+
+So, if we were to just have a single size then our texels might be fighting to be placed on a single pixel. It doesn't know what to go with! So, having various scaled down versions helps us to ensure it doesn't get all screwed up.
+
+For now, we'll leave our mipmaps level at 0. That way, we'll only be using the whole image.
+
+==== Texture Parameters - Filters ====
+* What if we try to render off center of texels?
+* Two possibilities:
+	* Nearest: Use the texel with most overlap (creates a pixelated effect)
+		* Gives a very one-to-one kinda effect. Great for pixelated artwork.
+	* Linear: Use a weighted average of surrounding texels (blends pixel boundaries)
+* Linear more common in most applications
+* Nearest used if you want a pixelated effect (such as a retro game).
+
+==== More on Texture Parameters - Filters ====
+* glTexParameter: used to set texture rendering parameters.
+* glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	* We add the i to indicate we are passing in an integer. Similar to how many of the function in OpenGL work as you've come to see.
+	* Also, we are actually passing an Enum but that is of course stored as an integer. As such, we use i.
+* glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+* GL_TEXTURE_MIN_FILTER: Filter to apply when texture is mader smaller (is further away).
+* GL_TEXTURE_MAG_FILTER: Filter to apply when texture is made bigger (is closer).
+	* MAG is short for magnify.
+* GL_LINEAR: Linear filter (blends surrounding texels).
+* GL_NEAREST: Nearest filter (picks nearest texel to sampling point).
+
+As an example, the top image is using Nearest. Notice how it has a more pixelated look, good for certain visual styles.
+
+The bottom image on the other hand is using Linear. It blends texels together to create a smoother look. Works well on complex textures, less so on simple ones.
+
+{{../images/nearest-vs-linear.png}}
+
+==== Texture Parameters - Wrap ====
+* What if we try to sample a point outside the 0, 1 range?
+	* Such as 1, 2, or even 100!
+* Multiple ways to handle it:
+	* Repeat the texture.
+	* Repeat a mirrored form of the texture.
+	* Extend pixels at the edge.
+		* This is also known as //clamping.//
+	* Apply a colored border.
+* Can use glTexParameter to define how this is handled.
+
+==== More on Texture Parameters - Wrap ====
+* glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+* glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+* GL_TEXTURE_WRAP_S: How to handle wrapping on "s-axis" (x-axis).
+* GL_TEXTURE_WRAP_T: How to handle wrapping on "t-axis" (y-axis).
+
+* GL_REPEAT: Repeat texture.
+* GL_MIRRORED_REPEAT: Repeat and mirror texture.
+* GL_CLAMP_TO_EDGE: Extend pixels at edge.
+* GL_CLAMP_TO_BORDER: Apply colored border.
+	* It's pretty much an //infinite// border.
+
+{{../images/wrap-parameters.png}}
+
+==== Loading Images for Textures ====
+* Could write own image loader...
+* But will get confusing for handling each image type (bmp, jpg, png, gif, tga, etc...).
+	* Image writing a loader for every single one and their special cases... Yuck!
+* Image Loader libraries do the work for us.
+* Popular library: Simple OpenGL Image Library (SOIL).
+* For the sake of simplicity, we'll use a smaller library...
+* stb_image
+	* It's a single header file without having to use a whole import thing for.
+
+==== Using stb_image ====
+* Only requires the header file, so lightweight.
+* Must start project with:
+	* #define STB_IMAGE_IMPLEMENTATION
+* unsigned char *data = stbi_load("image.jpg", &width, &height, &bitDepth, 0);
+	* Of course, the references are having that data stored in them from the loaded in image. Width and height is important for defining our texture. bitDepth isn't as necessary.
+* Might need to flip image.
+* stbi_set_flip_vertically_on_load(true);
+	* Literally flips the image.
+
+==== Texture Samplers ====
+* Textures in Shaders are accessed via "Samplers."
+	* Samplers are **not** the texture itself. It's an ID that points to a Texture Unit.
+* Textures are attached to a "Texture Unit."
+	* The Texture Unit has the actual texture applied to it.
+* Samplers access textures attached to their Texture Unit.
+* In shader, use "sampler2D" type.
+	* There are a few others as well such as 1D and 3D.
+* To get the value of a texel, use GLSL "texture" function.
+* texture(textureSampler, TexCoord);
+* textureSampler: the sampler2D object.
+* TexCoord: the interpolated texel co-ordinate in the Fragment Shader.
+{{../images/texture-unit.png}}
+Above is an example of Texture Units and Samplers! So, the sampler2D object has an id such as 0 or 1 associated with it. It then points to a Texture Unit that has the actual texture applied to it.
+
+==== Texture Units ====
+* Bind texture to desired Texture Unit:
+	* glActiveTexture(GL_TEXTURE0);
+		* This is for Texture Unit 0. If we used GL_TEXTURE1 then we'd be looking at texture unit 1.
+		* By default, the Texture Unit is 0 so we won't be touching this too much too soon. When we get into shadow maps, we'll be doing more.
+	* glBindTexture(GL_TEXTURE_2D, textureID);
+
+* Ensure sampler2D variables know which Texture Unit to access:
+	* glUniform1i(uniformTextureSampler, 0);
+
+* Value attached to uniform is the Texture Unit number.
+
+==== Summary ====
+* Textures use texels between 0 and 1.
+* Texels are bound to vertices and values are interpolated.
+* Mipmaps handle level-of-detail more efficiently.
+	* By creating different sized version of the texture.
+* Texture Filtering changes how texels are blended (or aren't blended) based on size on screen.
+* Texture Wrapping changes how textures are handled for texel values outside of the 0, 1 range.
+* Wrapping and Filtering are defined using the glTexParameteri function.
+* Load images with third-party libraries for convenience.
+* SOIL is a popular library for this but stb_image is more lightweight and good for this project.
+* **Textures attach to Texture Units, samplers read from Textures attached to Texture Units.**
+
+That last point is particularly good to know!
