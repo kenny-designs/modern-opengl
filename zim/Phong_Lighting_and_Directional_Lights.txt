@@ -1,0 +1,192 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2020-08-02T17:48:13-04:00
+
+====== Phong Lighting and Directional Lights ======
+Created Sunday 02 August 2020
+
+==== Phong Lightning ====
+* Consists of 3 parts:
+	* **Ambient Lighting: **Light that is always present, even if a light source's direct path is blocked.
+		* Imagine you block a light source with your hands. Actually, give it a go! Notice how you can still see the palm (or backs) of your hands? That's ambient lighting!
+	* **Diffuse Lighting:** Light determined by direction of light source. Creates a faded effect further from the light.
+	* **Specular Lighting: **Light reflected perfectly from the source to the viewer's eye. Effectively a reflection of the light source. Move prominent on shiny object.
+* Combined, they create the **Phong Lighting Model.**
+
+Much to my surprise, **do not confuse this with phong shading!** That's something else.
+
+Below is an example of the Phong Lighting (also known as **Phong Reflection**).
+
+{{../images/phong-lighting-model.png}}
+
+==== Ambient Lighting ====
+* Simplest lighting concept.
+* Simulates light bouncing off other objects.
+* E.g. Create a shadow on the ground with your hand, using the sun... you can still see the color in the shadow! It is still being lit.
+* Global illumination simulates this...
+	* Is another model where we can simulate this bouncing of light instead of estimating what it is and applying a hard number.
+* Very advanced! Not necessary here.
+
+==== More on Ambient Lighting ====
+* Create an ambient lighting factor.
+* ambient = lightColor * ambientStrength;
+* This factor is how much of a fragment's color this light's ambient shows.
+* fragColor = objectColor * ambient;
+* If ambient is 1 (full power) then the fragment is always fully lit.
+* If ambient is 0 (no power) then the fragment is always black.
+* If ambient is 0.5 (half power) then fragment is half its normal color.
+
+==== Diffuse Lighting ====
+* More complex!
+* Simulates the **drop-off of lighting** as angle of lighting becomes more shallow.
+* Side facing directly at a light is brightly lit.
+* Side facing at an angle is more dim.
+* Can use the angle between the vector connecting light source to fragment and the vector perpendicular to the face (surface //normal//).
+
+Below is a diagram of Diffuse Lighting in action:
+{{../images/diffuse-diagram.png}}
+* Use θ to determine Diffuse Factor.
+* Smaller θ: More light.
+* Larger θ: More dim.
+
+In other words, when the surface points directly at the light source then it is fully lit. The further the surface looks away from the light source the dimmer it gets.
+
+==== More on Diffuse Lighting ====
+* Recall from Vectors: **Dot Product.**
+* {{./equation.png?type=equation}}
+	* Remember, we can also get the Dot Product by multiplying each corresponding component of the vectors and adding it all together.
+* If both vectors are normalized (converted to **unit vectors**)
+	* Unit vector is a vector with a length, or magnitude, of 1
+* Then: {{./equation001.png?type=equation}}
+* So that leaves us with: {{./equation002.png?type=equation}}
+* Since cos(0) = 1 and cos(90) = 0
+	* So! It just so happens that we get a value of 0 to 1 which is just what we need!
+	* By just getting the dot product between two vectors, we can get the diffuse factor straight away!
+* We can use the output of {{./equation003.png?type=equation}} to determine a diffuse factor!
+
+Observe the image below to see this in action! He also made 0 and 90 degree versions but I'm going to be lazy and only share the 45 degree version. I'm certain you can figure out what would happen if we have 0 and 90 degrees yourself!
+{{../images/diffuse-diagram-45.png}}
+* Normalize normal and light vectors...
+* {{./equation004.png?type=equation}}
+* Diffuse factor of 0.71 (71% diffuse lighting)!
+
+Also, something that you might have noticed is that despite 45 degrees being the half way point between 0 and 90 degrees, we only have a diffuse factor of 0.71 instead of 0.5! Just as you may have noticed with the graph of cosine, it curves.
+
+==== And Even More on Diffuse Lighting ====
+* **If factor is negative (less than 0) then light is behind surface, so default to 0.**
+* Apply diffuse factor with ambient:
+	* fragColor = objectColor * (ambient + diffuse);
+Below is an example of the normals on a cube:
+{{../images/cube-surface-normals.png}}
+Below is an example of normals on a curved surface:
+{{../images/curved-surface-normals.png}}
+
+==== Diffuse Lighting - Normals ====
+* Can define them for each face...
+* Each vertex will have mulitple normals, one for each face it is part of.
+* Good for //Flat Shading,// not good for realistic smooth shading.
+* Also doesn't work too well for indexed draws: we only define each vertex once per face.
+
+==== More on Diffuse Lighting - Normals ====
+* Alternative: **Phong Shading** (not Phong Lighting!).
+* Each vertex has an average of the normals of all the surfaces it is part of.
+* Interpolate between these averages in shader to create smooth effect.
+* Good for complex models!
+* Not so good for simple models with sharp edges (unless you use some clever modeling techniques).
+
+Below is an example of flat vs phong shading:
+{{../images/flat-vs-phong.jpg}}
+* Phong Shaded sphere is defined the same way as Flat Shaded.
+	* Once again, we are just using the normals as they appear across the mesh.
+* Smoothness is illusion created by interpolating and effectively //faking// surface normals to look curved.
+
+==== And Even More on Diffuse Lighting - Normals ====
+* Problem with non-uniform scales.
+* Wrongly skewing normals.
+* Can be countered by creating a //normal matrix //from model matrix.
+* Transform normals with: mat3(transpose(inverse(model)))
+* Full explanation on:
+	* http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
+
+Below is a visual example of what happens to the normal when you perform a non-uniform scale:
+{{../images/skewed-normals.png}}
+
+==== Specular Lighting ====
+* Specular relies on the position of the viewer.
+* It is the direct reflection of the light source hitting the viewer's eye.
+* Moving around will affect the apparent position of the specular reflection on the surface.
+* Therefore, we need four things:
+	* Light vector
+	* Normal vector
+	* Reflection vector (Light vector reflected around Normal)
+	* View vector (vector from viewer to fragment)
+The following image illustrates what is occuring:
+{{../images/specular-diagram.png}}
+* Need the angle between viewer and relfection.
+* Smaller θ: More light.
+* Larger θ: More dim.
+
+So then, we don't directly use the Light source nor the Normal. Instead, we reflect the Light source vector over the Normal vector to get the Light Reflection vector. We then use that to find the angle between the Light reflection and the Viewer.
+
+==== More on Specular Lighting ====
+* **View vector** is just the difference between the Fragment Position and the Viewer (Camera) position.
+* **Reflection vector** can be obtained with a built-in GLSL function: reflect(incident, normal)
+	* Incident: Vector to reflect.
+	* Normal: Normal vector to reflect around.
+* Just as with diffuse, use dot product between normalized forms of view and reflection vector, to get specular factor.
+
+==== Specular Lighting - Shininess ====
+* One last step to alter Specular Factor: Shininess
+* Shininess creates a more accurate reflection.
+* Higher shine: Smaller more compact specular.
+* Lower shine: Larger, faded specular.
+* Simply put previously calculated specular factor to the power of shininess value.
+* specularFactor = <view, reflection>^{shininess}
+	* In case you forgot, the <,> is for dot product. Also, shininess is an exponent!
+	* The light itself does not have shininess of course. This is a part of the material itself.
+	* In our code, we'll be creating a new class to handle the material of our objects.
+
+Below is an example of how shininess effects specular lighting:
+{{../images/shininess-example.png}}
+
+==== And More Specular Lighting ====
+* Then apply Specular Factor as with ambient and diffuse...
+* fragColor = objectColor * (ambient + diffuse + specular);
+* ... but where is this light coming from?
+
+==== Types of Light ====
+* **Directional Light:** A light without a position or source. All light is coming as parallel rays from an seemingly infinite distance. Best example is the Sun.
+* **Point Light: **A light with a position that shines in all directions. Best example is a lightbulb.
+* **Spot Light: **Similar to a Point Light, but cut down to emit in a certain range, with a certain angle. Best example is a flightlight.
+* **Area Light: **More advanced light type that emits light from an area. Think of a large light up panel on a wall or ceiling.
+
+==== Directional Light ====
+* Simplest form of light!
+* Only requires basic information (color, ambient, diffuse, specular...) and a direction.
+* Treat all light calculations using the same direction for the light vector.
+* Don't need to calculate a light vector!
+
+Below is an example of directional light:
+{{../images/directional-light.svg}}
+
+==== Summary ====
+* Phong Lighting Model combines Ambient, Diffuse, and Specular lighting.
+* Diffuse and Specular require normals.
+* Use dot product and normals to determine diffuse lighting.
+* Use dot product and light reflected around normals to determine specular lighting.
+* Phong Shading interpolates averaged normals to create smooth surfaces.
+* Four main types of light:
+	* Directional
+	* Point
+	* Spot
+	* Area
+* Directional Light is easiest, since it only requires a direction and allows us to skip calculating a light vector!
+
+
+
+
+
+
+
+
+
