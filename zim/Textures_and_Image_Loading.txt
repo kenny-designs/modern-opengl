@@ -41,7 +41,7 @@ After binding a texture, we can also write to it!
 * Second Argument: Mipmap Level (see next slide)
 * Third Argument: Format of the stored data. RBG is just Red, Green, and Blue values. Also, RGBA which has an Alpha Channel (transparency). Several others, not important here.
 * Fourth and Fifth Argument: Width and height of the texture.
-* Sixth Argument: This should always be 0. Legacy concept handling texture borders that [[OpenGL]] doesn't utilize anymore.
+* Sixth Argument: This should always be 0. Legacy concept handling texture borders that OpenGL doesn't utilize anymore.
 * Seventh Argument: Format of the data being loaded (as opposed to stored on the third argument).
 * Eight Argument: The data type of the values (int, float, byte, etc).
 * Ninth Argument: The data itself.
