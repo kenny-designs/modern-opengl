@@ -180,7 +180,7 @@ Below is an example of directional light:
 	* Point
 	* Spot
 	* Area
-* Directional Light is easiest, since it only requires a direction and allows us to skip calculating a light vector!
+* Directional Light is easiest, since it only requires a direction and allows us to skip calculating a light vector!q
 
 
 
