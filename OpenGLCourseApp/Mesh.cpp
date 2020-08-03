@@ -35,20 +35,24 @@ void Mesh::CreateMesh(GLfloat *vertices,
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices[0]) * numOfVertices, vertices, GL_STATIC_DRAW);
 
   // a good little bit happening here. Refer to the documentation
-  // we do the *5 because we added more to vertices[] to account for texture data
-  // in addition, the first 0 is for position in our layout.
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]) * 5, 0);
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vertices[0]) * 8, 0);
   glEnableVertexAttribArray(0);
 
   // 1 is for texture coordinates layout,
   // 2 because we have the u and w coordinates to textures,
-  // stride is 5,
+  // stride is 8,
   // and offset is 3 because we start looking for texture coords at the 3rd point
   // also, the last param needs to be a pointer. We typecast with void
   glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE,
-      sizeof(vertices[0]) * 5,
+      sizeof(vertices[0]) * 8,
       (void*)(sizeof(vertices[0]) * 3));
   glEnableVertexAttribArray(1);
+
+  // The following is for the normals data
+  glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE,
+      sizeof(vertices[0]) * 8,
+      (void*)(sizeof(vertices[0]) * 5));
+  glEnableVertexAttribArray(2);
 
   // Unbind the VAO, VBO, and IBO
   glBindBuffer(GL_ARRAY_BUFFER, 0);

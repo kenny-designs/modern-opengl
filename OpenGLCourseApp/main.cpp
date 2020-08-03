@@ -41,6 +41,67 @@ static const char* vShader = "Shaders/shader.vert";
 // Fragment Shader
 static const char* fShader = "Shaders/shader.frag";
 
+void calcAverageNormals(unsigned int * indices,
+    unsigned int indiceCount,
+    GLfloat * vertices,
+    unsigned int verticeCount,
+    unsigned int vLength,
+    unsigned int normalOffset)
+{
+  for (size_t i = 0; i < indiceCount; i += 3)
+  {
+    unsigned int in0 = indices[i] * vLength;
+    unsigned int in1 = indices[i + 1] * vLength;
+    unsigned int in2 = indices[i + 2] * vLength;
+
+    // similar to what I did in calc3,
+    // create a plane and then cross product
+    // to get the normal
+    glm::vec3 v1(vertices[in1] - vertices[in0],
+        vertices[in1 + 1] - vertices[in0 + 1],
+        vertices[in1 + 2] - vertices[in0 + 2]);
+
+    glm::vec3 v2(vertices[in2] - vertices[in0],
+        vertices[in2 + 1] - vertices[in0 + 1],
+        vertices[in2 + 2] - vertices[in0 + 2]);
+
+    // now we have our normal! Don't forget to normalize it.
+    glm::vec3 normal = glm::cross(v1, v2);
+    normal = glm::normalize(normal);
+
+    // now we can offset our normals in the vertices
+    // since we already have the x, y, and z we'll just offset
+    in0 += normalOffset;
+    in1 += normalOffset;
+    in2 += normalOffset;
+
+    // adjust the first normal's vertices
+    vertices[in0] += normal.x;
+    vertices[in0 + 1] += normal.y;
+    vertices[in0 + 2] += normal.z;
+
+    // now the second
+    vertices[in1] += normal.x;
+    vertices[in1 + 1] += normal.y;
+    vertices[in1 + 2] += normal.z;
+
+    // and now the final third vertice
+    vertices[in2] += normal.x;
+    vertices[in2 + 1] += normal.y;
+    vertices[in2 + 2] += normal.z;
+  }
+
+  for (size_t i = 0; i < verticeCount / vLength; i++)
+  {
+    unsigned int nOffset = i * vLength + normalOffset;
+    glm::vec3 vec(vertices[nOffset], vertices[nOffset + 1], vertices[nOffset + 2]);
+    vec = glm::normalize(vec);
+
+    vertices[nOffset] = vec.x;
+    vertices[nOffset + 1] = vec.y;
+    vertices[nOffset + 2] = vec.z;
+  }
+}
 
 void CreateObjects()
 {
@@ -54,19 +115,22 @@ void CreateObjects()
 
   // define the vertices for the triangle
   GLfloat vertices[] = {
-    // x,     y,    z,      u,    v
-    -1.0f, -1.0f, 0.0f,   0.0f, 0.0f,
-     0.0f, -1.0f, 1.0f,   0.5f, 0.0f,
-     1.0f, -1.0f, 0.0f,   1.0f, 0.0f,
-     0.0f,  1.0f, 0.0f,   0.5f, 1.0f
+    // nx, ny, and nz is for the normals
+    // x,     y,    z,      u,    v     nx    ny    nz
+    -1.0f, -1.0f, 0.0f,   0.0f, 0.0f,   0.0f, 0.0f, 0.0f,
+     0.0f, -1.0f, 1.0f,   0.5f, 0.0f,   0.0f, 0.0f, 0.0f,
+     1.0f, -1.0f, 0.0f,   1.0f, 0.0f,   0.0f, 0.0f, 0.0f,
+     0.0f,  1.0f, 0.0f,   0.5f, 1.0f,   0.0f, 0.0f, 0.0f
   };
 
+  calcAverageNormals(indices, 12, vertices, 32, 8, 5);
+
   Mesh *obj1 = new Mesh();
-  obj1->CreateMesh(vertices, indices, 20, 12);
+  obj1->CreateMesh(vertices, indices, 32, 12);
   meshList.push_back(obj1);
 
   Mesh *obj2 = new Mesh();
-  obj2->CreateMesh(vertices, indices, 20, 12);
+  obj2->CreateMesh(vertices, indices, 32, 12);
   meshList.push_back(obj2);
 }
 
@@ -98,13 +162,16 @@ int main()
   dirtTexture = Texture("Textures/dirt.png");
   dirtTexture.LoadTexture();
 
-  mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f);
+  mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f,
+      2.0f, -1.0f, -2.0f, 1.0f);
 
   GLuint uniformProjection = 0,
          uniformModel = 0,
          uniformView = 0,
          uniformAmbientIntensity = 0,
-         uniformAmbientColor = 0;
+         uniformAmbientColor = 0,
+         uniformDirection = 0,
+         uniformDiffuseIntensity = 0;
 
   // Prepare the projection matrix
   glm::mat4 projection = glm::perspective(
@@ -138,9 +205,14 @@ int main()
     uniformView = shaderList[0].GetViewLocation();
     uniformAmbientColor = shaderList[0].GetAmbientColorLocation();
     uniformAmbientIntensity = shaderList[0].GetAmbientIntensityLocation();
+    uniformDirection = shaderList[0].GetDirectionLocation();
+    uniformDiffuseIntensity = shaderList[0].GetDiffuseIntensityLocation();
 
     // Use our light source
-    mainLight.UseLight(uniformAmbientIntensity, uniformAmbientColor);
+    mainLight.UseLight(uniformAmbientIntensity,
+        uniformAmbientColor,
+        uniformDiffuseIntensity,
+        uniformDirection);
 
     // create an identity matrix
     glm::mat4 model(1.0f);
