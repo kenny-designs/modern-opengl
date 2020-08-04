@@ -31,6 +31,8 @@ class Shader
     GLuint GetShininessLocation();
     GLuint GetEyePositionLocation();
 
+    void SetDirectionalLight(DirectionalLight* dLight);
+
     void UseShader();
     void ClearShader();
 

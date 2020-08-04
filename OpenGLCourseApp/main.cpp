@@ -177,10 +177,6 @@ int main()
          uniformModel = 0,
          uniformView = 0,
          uniformEyePosition = 0,
-         uniformAmbientIntensity = 0,
-         uniformColor = 0,
-         uniformDirection = 0,
-         uniformDiffuseIntensity = 0,
          uniformSpecularIntensity = 0,
          uniformShininess = 0;
 
@@ -214,19 +210,12 @@ int main()
     uniformModel = shaderList[0].GetModelLocation();
     uniformProjection = shaderList[0].GetProjectionLocation();
     uniformView = shaderList[0].GetViewLocation();
-    uniformColor = shaderList[0].GetColorLocation();
-    uniformAmbientIntensity = shaderList[0].GetAmbientIntensityLocation();
-    uniformDirection = shaderList[0].GetDirectionLocation();
-    uniformDiffuseIntensity = shaderList[0].GetDiffuseIntensityLocation();
     uniformEyePosition = shaderList[0].GetEyePositionLocation();
     uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
     uniformShininess = shaderList[0].GetShininessLocation();
 
     // Use our light source
-    mainLight.UseLight(uniformAmbientIntensity,
-        uniformColor,
-        uniformDiffuseIntensity,
-        uniformDirection);
+    shaderList[0].SetDirectionalLight(&mainLight);
 
     // the Position of these two lines doesn't matter so long as they are done
     // before the very first draw
