@@ -10,7 +10,8 @@ CPP=main.cpp \
 		Camera.cpp \
 		Texture.cpp \
 		Light.cpp \
-		Material.cpp
+		Material.cpp \
+		DirectionalLight.cpp
 
 # LIBS=-L../includes/GLEW/lib
 
