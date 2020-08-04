@@ -1,0 +1,108 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2020-08-04T13:24:16-04:00
+
+====== Point Lights and Spot Lights ======
+Created Tuesday 04 August 2020
+
+==== Point Lights ====
+* Lights with a position that emit light in **all** directions.
+* Need to determine direction vector manually.
+* Get difference between light position and fragment position.
+* Apply directional lighting maths to the calculated direction vector.
+	* The math is very similar to that of the direction light. We just have to figure out the direction of that light between the fragment and the light source instead of just having it uniform all thoughout (as with the directional light).
+	* So, once we get the difference between the light position and the fragment position all we have to do is pass that through our directional light code! 
+
+Below is a simple diagram that shows how light is emitted from the point light.
+{{../images/point-light-example.png}}
+
+==== Point Lights - Attenuation ====
+* Directional Lights simulate infinite distance, so distance doesn't effect lighting power.
+* Point Lights have positions, distance from point being lit changes power of lighting.
+* One possible solution: Linear drop-off.
+* Have the lighting power drop off in direct proportion with the distance of the light source.
+* Simple, but not very realistic.
+
+==== More on Point Lights - Attenuation ====
+* In reality, light intensity initially drops quickly with distance...
+* But the further you are, the slower it decreases!
+* For positive values, the reciprocal of a quadratic function can create this effect!
+* In other words: {{./equation.png?type=equation}}
+	* Remember the graph for 1/x? Keep that in mind!
+* Where x is the distance between the light source and fragment.
+
+In the graphs below, we're most interested in the top right portion. Notice how it quickly falls off as x grows in value.
+{{../images/one-over-x-graph.jpg}}
+
+==== Even More on Point Lights - Attenutation ====
+{{./equation001.png?type=equation}}
+* **distance: **Distance between light and fragment.
+* **quadratic: **User-defined value, usually the lowest of the three.
+* **linear: **User-defined value, lower than constant.
+* **constant: **Usually 1.0 to ensure denominator is always greater than 1.
+* E.g. if denominator is 0.5, then {{./equation002.png?type=equation}} so attenutation will //double// power of light beyond its set value.
+* For useful values, see [[http://wiki.ogre3d.org/tiki-index.php?page=-Point+Light+Attenuation|this]] article.
+* Alternatively, toy around with values!
+* **Application: **Apply attenutation to ambient, diffuse, and specular.
+
+==== Spot Lights ====
+* Work the same as Point Lights in theory.
+* Have position, use attenuation, etc...
+* Also have a direction and a cut-off angle.
+* **Direction: **Where the spot light is facing.
+* **Cut-off angle: **The angle describing the //edges// of the light, from the direction vector.
+
+Below is an example of spot lights at work (notice, **it has a cone shape!** Albeit in 2D space it's a triangle):
+{{../images/spot-light-diagram.png}}
+* Need a way to compare the //Angle to Fragment// to the //Cutoff Angle.//
+* Use the Dot Product again!
+	* With the dot product, we can compare the angle of the fragment and cutoff. If the fragment is greater than the cutoff angle, then we no there is no light!
+
+==== More on Spot Lights ====
+* angleToFragment = <lightVector, lightDirection>
+	* Don't forget, <,> is the dot product!
+* **lightVector: **The vector from the light to the fragment.
+* **lightDirection: **The direction the Spot Light is facing.
+* So angleToFragment will be a value between 0 and 1, representing the angle between the two.
+* Can simply do cos(cutOffAngle) for the Cut Off Angle.
+	* We already know the cutoff angle ahead of time so we don't have to dot product here! Just pass the angle into cos and we have our answer.
+* **Larger value: **Smaller angle.
+	* Remember, as θ goes from 0 to 90 degrees, cos(θ) goes from 1.0 to 0.0.
+	* As such, a large value of 1 nets a small angle 0. A small value 0 nets a large angle 90 degree.
+* **Smaller value: **Larger angle.
+* If angleToFragment value is //larger// than cos(cutOffangle), then it is within the spot: Apply lighting.
+* If angleToFragment value is smaller, then it has a greater angle than the Cut Off: Don't apply lighting!
+
+==== Spot Lights - Soft Edges ====
+* Current approach has sharp cut-off at edges of spot.
+* Creates unrealistic spot light (although might be good for retro video game effect)
+* Need a way to soften when approaching edges of cut-off range.
+* Use the dot product result from before as a factor!
+* Issue: Due to select range, dot product won't scale very well.
+* E.g. If cut-off is 10 degrees...
+	* Minimum dot product is cos(10 degrees) = 0.98
+	* Dot product range will be 0.98 - 1.00
+	* Using dot product to fade edge will be almost unnoticeable!
+* Solution: Scale dot product range to 0 — 1!
+	* By this, he means scale the 0.98 to 1.00 range so that its 0 to 1.
+
+==== More on Spot Lights - Soft Edges ====
+* Formula to scale value between ranges:
+	* {{./equation003.png?type=equation}}
+* newRangeMin is 0, newRangeMax is 1... so numerator is just {{./equation004.png?type=equation}}
+* originalRangeMax is 1
+* So with some inverting of min and max values...
+	* {{./equation005.png?type=equation}}
+* Much simpler!
+* After calculating Spot Light lighting...
+* Multiply by spotLightFade effect.
+* color = spotLightColor * spotLightFade
+
+==== Summary ====
+* Point Lights emit light in all directions.
+* Use Directional Light algorithm with light vector.
+* Fade light with distance via attenuation values.
+* Spot Lights are Point Lights with a direction and a cut-off range.
+* Compare light vector angle with cut off angle.
+* Soften edges with scaled form of light vector angle.
+
