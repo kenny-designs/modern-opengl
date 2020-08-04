@@ -7,6 +7,7 @@ layout (location = 2) in vec3 norm;
 out vec4 vCol;
 out vec2 TexCoord;
 out vec3 Normal;
+out vec3 FragPos;
 
 uniform mat4 model;
 uniform mat4 projection;
@@ -26,4 +27,11 @@ void main()
   // The reason we need to do all this then multiply by norm is
   // so we can account for scaling and rotation!
   Normal = mat3(transpose(inverse(model))) * norm;
+
+  // Firstly, we want the position of the fragment within the world.
+  // As such, we don't multiply by the projection and view matrices.
+  //
+  // Second, we need a vec3 and not a vec4! We can get a vec3 via
+  // swizzling (or is it swivel?). That is why we use the .xyz at the end.
+  FragPos = (model * vec4(pos, 1.0f)).xyz;
 }

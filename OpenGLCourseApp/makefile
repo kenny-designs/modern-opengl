@@ -9,7 +9,8 @@ CPP=main.cpp \
 		Window.cpp \
 		Camera.cpp \
 		Texture.cpp \
-		Light.cpp
+		Light.cpp \
+		Material.cpp
 
 # LIBS=-L../includes/GLEW/lib
 
