@@ -178,7 +178,7 @@ int main()
          uniformView = 0,
          uniformEyePosition = 0,
          uniformAmbientIntensity = 0,
-         uniformAmbientColor = 0,
+         uniformColor = 0,
          uniformDirection = 0,
          uniformDiffuseIntensity = 0,
          uniformSpecularIntensity = 0,
@@ -214,7 +214,7 @@ int main()
     uniformModel = shaderList[0].GetModelLocation();
     uniformProjection = shaderList[0].GetProjectionLocation();
     uniformView = shaderList[0].GetViewLocation();
-    uniformAmbientColor = shaderList[0].GetAmbientColorLocation();
+    uniformColor = shaderList[0].GetColorLocation();
     uniformAmbientIntensity = shaderList[0].GetAmbientIntensityLocation();
     uniformDirection = shaderList[0].GetDirectionLocation();
     uniformDiffuseIntensity = shaderList[0].GetDiffuseIntensityLocation();
@@ -224,7 +224,7 @@ int main()
 
     // Use our light source
     mainLight.UseLight(uniformAmbientIntensity,
-        uniformAmbientColor,
+        uniformColor,
         uniformDiffuseIntensity,
         uniformDirection);
 
