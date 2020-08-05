@@ -219,7 +219,7 @@ int main()
   unsigned int spotLightCount = 0;
   spotLights[0] = SpotLight(
       1.0f, 1.0f, 1.0f,
-      0.0f, 1.0f,
+      0.0f, 2.0f,
       0.0f, 0.0f, 0.0f,
       0.0f, -1.0f, 0.0f,
       1.0f, 0.0f, 0.0f,
@@ -275,6 +275,10 @@ int main()
     uniformEyePosition = shaderList[0].GetEyePositionLocation();
     uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
     uniformShininess = shaderList[0].GetShininessLocation();
+
+    glm::vec3 lowerLight = camera.getCameraPosition();
+    lowerLight.y -= 0.3f;
+    spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
 
     // Use our light source
     shaderList[0].SetDirectionalLight(&mainLight);
