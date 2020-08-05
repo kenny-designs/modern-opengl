@@ -11,7 +11,8 @@ CPP=main.cpp \
 		Texture.cpp \
 		Light.cpp \
 		Material.cpp \
-		DirectionalLight.cpp
+		DirectionalLight.cpp \
+		PointLight.cpp
 
 # LIBS=-L../includes/GLEW/lib
 
