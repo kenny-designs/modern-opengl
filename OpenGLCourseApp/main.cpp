@@ -196,7 +196,7 @@ int main()
   dullMaterial = Material(0.3f, 4);
 
   mainLight = DirectionalLight(1.0f, 1.0f, 1.0f,
-      0.0f, 0.0f,
+      0.1f, 0.1f,
       2.0f, -1.0f, -2.0f);
 
   // Setup spot lights
@@ -206,19 +206,19 @@ int main()
       0.0f, 0.1f,
       0.0f, 0.0f, 0.0f,
       0.3f, 0.2f, 0.1f);
-  pointLightCount++;
+  //pointLightCount++;
 
   pointLights[1] = PointLight(
       0.0f, 1.0f, 0.0f,
       0.0f, 0.1f,
       -4.0f, 2.0f, 0.0f,
       0.3f, 0.1f, 0.1f);
-  pointLightCount++;
+  //pointLightCount++;
 
   // Setup point lights
   unsigned int spotLightCount = 0;
   spotLights[0] = SpotLight(
-      0.0f, 0.0f, 1.0f,
+      1.0f, 1.0f, 1.0f,
       0.0f, 1.0f,
       0.0f, 0.0f, 0.0f,
       0.0f, -1.0f, 0.0f,
@@ -306,7 +306,7 @@ int main()
     model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
     glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
 
-    plainTexture.UseTexture();
+    dirtTexture.UseTexture();
     shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
     meshList[2]->RenderMesh();
 
