@@ -21,7 +21,7 @@ class PointLight : public Light
 
     ~PointLight();
 
-  private:
+  protected:
     glm::vec3 position;
 
     // controls the attenuation of our light source
