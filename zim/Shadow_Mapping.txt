@@ -1,0 +1,187 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2020-08-07T10:36:36-04:00
+
+====== Shadow Mapping ======
+Created Friday 07 August 2020
+
+==== Shadow Mapping ====
+* Literally create a "map" of the shadows made by a light.
+* Use this map to determine where not to apply light.
+* The map is held as a 2D texture (sampler2D in shader).
+* Map is created using a "Framebuffer."
+* Framebuffer then writes to texture.
+* Therefore: At least two rendering passes needed!
+* One for creating shadow map, second for drawing scene.
+
+==== Shadow Mapping - Creating Map ====
+We essentially have two passes when we render out a scene. First is for the light and the second is for the scene itself.
+
+* For first pass: Render the scene from the perspective of a light source.
+{{../images/shadow-map-diagram.png}}
+
+==== More on Shadow Mapping - Creating Map ====
+* Shaders don't just create color output!
+* Recall from Rendering Pipeline: Per-Sample Operations.
+* Depth Tests using Depth Buffer values.
+* Depth Buffer is another buffer along with Color Buffer that holds a value between 0 and 1 that determines how deep in to frustum a fragment is.
+* 0 is on the Near Plane (close to the camera).
+* 1 is on the Far Plane (far from the camera).
+
+In the below image, we see the depth of scene. The whiter the value the closer to the camera it is. The darker the further. However, typically the black values are nearer. In the image below it just so happens to be the white values instead.
+{{../images/shadow-map-building.png}}
+
+==== And Even More on Shadow Mapping - Creating Map ====
+* How to extract depth buffer data?
+* Framebuffer Object!
+* Normally, Framebuffer bound is '0'.
+	* Remember, the Framebuffer is what we're drawing to. So far, we have 2 frame buffers. The one the user is currently seeing and the one that we are drawing to. Then we swap them out. However, now we need a third frame buffer to help us with drawing the shadows!
+* This is the default buffer (the one drawn to the screen when buffer swap is called).
+* We can find a separate Framebuffer and draw to that...
+* Then use the data as we wish!
+
+==== More... On Shadow Mapping - Creating Map ====
+* glGenFramebuffers(1, &FBO);
+	* FBO is framebuffer object
+* Create a texture the usual way, but...
+* glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	* Remember, we usually use GL_RGB or GL_RGBA for the texture. Now we're using GL_DEPTH_COMPONENT.
+	* Also, the depth component is a single float so we use GL_FLOAT instead of an unsigned int as we had done before.
+* GL_DEPTH_COMPONENT: Single float value, unlike RGB which had three.
+* Data is NULL, so we have created an empty texture with dimensions width * height.
+
+==== MORE! Shadow Mapping - Creating Map ====
+* Set Framebuffer to write to texture with:
+	* glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, textureID, 0);
+* GL_DEPTH_ATTACHMENT: Tells Framebuffer to only write Depth Buffer data.
+	* We've been writing all sorts of RGB color data but shadows don't have color. We just want depth. As such, only the depth is written.
+* glDrawBuffer(GL_NONE);
+* glReadBuffer(GL_NONE);
+	* The above two just says we don't want to write anything to the color.
+* These override color data draw/read operations. We don't want to output color with our shadow map!
+
+==== Holy Moly There's More! Shadow Mapping - Creating Map ====
+* Shader itself is simple:
+	* Apply Projection and View matrices as if light source is the camera.
+		* In case this wasn't clear, that means we apply these matrices as though we are looking from our light source.
+	* Apply model matrix of each object.
+	* Fragment Shader isn't even needed: Depth buffer is written automatically.
+* Directional Light shadow map works differently to Point/Spot Light shadow maps!
+* View Matrix position should consist of reverse of Directional Light's direction (simulating light in that direction).
+* View Matrix direction is simply the direction of the light.
+* Projection Matrix is different: Frustum of Perspective Projection fans out! Directional Light rays are all parallel, they must not fan out.
+* Solution: Orthographic Projection Matrix.
+	* Remember, in Orthographic everything is rendered in parallel. Nothing changes with distance much like a directional light.
+* glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 0.01f, 100.0f);
+
+==== Shadow Mapping - Using Map ====
+* After rendering the scene with the Shadow Map shader, the texture bound to it is occupied with Shadow Map data.
+* Make sure to unbind the Framebuffer used for the shadow map!
+* Now we need to bind the texture to our main shader and use it.
+
+==== More on Shadow Mapping - Using Map ====
+* Need access to the View Matrix used in the Shadow Map Shader (the one using the light's perspective).
+* Use this to get the current fragment position in relation to the light source.
+* Need to create way to access points on the Shadow Map with the light source perspective's fragment co-ordinates...
+* Therefore, need to convert light source perspective fragment's co-ordinates to "Normalized Device Co-ordinates" (values between -1 and 1, like when we started).
+
+==== And Even More on Shadow Mapping - Using Map ====
+* Need to perform a "perspective divide".
+* Similar to how co-ordinates are created when moving to the Fragment Shader anyway...
+* However this is only applied to gl_Position.
+* We need to do it manually for the position relative to the light source.
+* Easy calculation: Divide vector by it's 'w' component. This is why we use a vec4!
+* vec3 projCoords = LightSpacePos.xyz / LightSpacePos.w;
+	* remember, the .xyz is swizzling. Well, it goes by another similar sounding name but I like swizzling. It creates a new vector from an existing one but just with those coords. So, a vec3 with xyz. We can change the order too! .zxy for example. Pretty cool!
+* Then we need to scale the projCoords to 0, 1, to match the 0, 1 values of a texture (recall textures use u- and v-axis between 0 and 1).
+* projCoords = (projCoords * 0.5) + 0.5;
+	* This allows us to scale up our projCoords to that 0, 1 range.
+
+==== MORE on Shadow Mapping - Using Map ====
+* Now use texture function to get closest depth measured during Shadow Map pass.
+* float closest = texture(shadowMap, projCoords.xy).r;
+	* r is the depth component value. That's all we need from our shadowMap cause we're using it to help us determine whether or not there is a shadow at that particular fragment.
+* Grab z value from projCoords.
+* z-axis on normalized co-ordinates is between 0 and 1, just like depth, and so can be treated as such.
+* Compare current and closest depth...
+* If current larger than closest: It is further away than the first point the light hits at that fragment! So it must be in shadow.
+* Otherwise: It is the same point, so it must be getting lit by the light.
+* To apply shadow, simply add or remove diffuse and specular (retain ambient, remember: Ambient Light is ALWAYS present).
+* color = fragColor * (ambient + (1.0 - shadow) * (diffuse + specular));
+	* And this is how we apply shadows! For the most part...
+
+==== Shadow Mapping - Shadow Acne ====
+* Shadow Acne occurs due to resolution issues.
+* Imagine lighting a surface at any angle...
+* When rendering from a less slanted angle, two pixels may converge to one texel on the shadow map!
+* One point could be mistaken as being behind a point next to it.
+
+The odd //banding// effect you see on the plane below is actually due to resolution issues.
+In the image below tha tone, the red/blue shape on the right is the lighting's perspective. The one on the left is the camera's perspective. That red maps onto the red and blue from the camera's perspective. It thinks one is further back than the other though and starts to cause that odd effect. However, they're both at the same point! So, it gets confused.
+
+I'm not sure how to explain this very well. I'm still trying to figure out what is occuring here.
+{{../images/shadow-acne.png}}
+
+==== More on Shadow Acne ====
+* Solution: Add a slight bias.
+* Effectively moving everything slightly towards the camera to fake a closer depth.
+	* Now it won't think those red and blue bits aren't lit!
+* Try to keep the bias small, or...
+* "Peter Panning" occurs.
+	* In the Peter Pan story, there's a part where his shadow gets up and rans away from him. When we have too much bias, we get a similar visual effect. It looks as though the shadow is detached from the object!
+* Bias offset causes areas close to shadow source to disappear because depth values are close.
+
+Below is this //Peter Panning// in action:
+{{../images/peter-panning.png}}
+
+==== Shadow Mapping - Oversampling ====
+* What about areas outside of the Projection frustum used to create the shadow map?
+	* Also, as an aside the shadow map is a texture.
+* Values will be outside 0, 1 range and therefore always create shadows!
+* Solution:
+	* Set texture type to use border with values all consisting of 0 (always lowest depth value so always lit).
+		* Remember, we have different kinds of wraps that we can use. Such as GL_REPEAT. We also have one for the border!
+	* For values beyond far plane and therefore greater than 1: Initialize to 0.
+* See coding video for implementation.
+
+==== Shadow Mapping - PCF ====
+* Edges of shadows are limited to resolution of texture shadow map is written to.
+* This causes unsightly pixelated edges.
+* Solution: Sample surrounding texels and calculate average. Apply only partial shadows for shadowed areas.
+	* Now instead of having either shadow or no shadow, we have a range of values.
+* Also known as: **Percentage-Closer Filtering** (PCF).
+	* Similar to the linear filtering we've done with textures.
+* Can get dangerously intensive if not used correctly.
+
+==== More on Shadow Mapping - PCF ====
+* Get depth values of surrounding texels, such as the 8 immediate surrounding.
+* Determine if in shadow.
+* If yes: Increment shadow value.
+* When done, divide shadow value by number of samples taken.
+* Apply percentage of shadow using this value.
+* E.g. Shadow value calculated as 3, and 9 samples are taken. 3/9 = 0.333... So apply 33% shadow to that pixel.
+* More samples: Better fade effect, but...
+* Keep in mind, this set of samples will be taken for EVERY fragment, so instead of being one claculation, it becomes 9x calculations just for using immediate surrounding texels!
+	* Shadow mapping is a rather intensive process. That's why turning shadows off in games improves performance by a ton!
+
+==== Summary ====
+* Shadows created by texture maps of depth data.
+* Depth data created by rendering scene from point of view of light source.
+* Do two passes: One to create shadow  maps and one to render scene.
+* Compare depth of fragment from light's perspective to value on shadow map texture.
+* Add bias to remove shadow acne.
+* Set values from beyond sampling region to '0' (no shadow).
+* Use PCF algorithms to fade shadow edges.
+
+
+
+
+
+
+
+
+
+
+
+
+
