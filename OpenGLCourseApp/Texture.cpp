@@ -9,7 +9,7 @@ Texture::Texture()
   fileLocation = "";
 }
 
-Texture::Texture(char* fileLoc)
+Texture::Texture(const char* fileLoc)
 {
   textureID = 0;
   width = 0;
@@ -18,13 +18,48 @@ Texture::Texture(char* fileLoc)
   fileLocation = fileLoc;
 }
 
-void Texture::LoadTexture()
+bool Texture::LoadTexture()
 {
   unsigned char* texData = stbi_load(fileLocation, &width, &height, &bitDepth, 0);
   if (!texData)
   {
     printf("Failed to find %s\n", fileLocation);
-    return;
+    return false;
+  }
+
+  glGenTextures(1, &textureID);
+  glBindTexture(GL_TEXTURE_2D, textureID);
+
+  // repeat on the s (x-axis) and y (y-axis)
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+  // blend the pixels as we move closer to the image
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+  // same as above but as we move further away
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+  // for the unsigned byte, remember that char's are just bytes of data!
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texData);
+
+  // now generate the mipmaps!
+  glGenerateMipmap(GL_TEXTURE_2D);
+
+  // unbind texture
+  glBindTexture(GL_TEXTURE_2D, 0);
+  stbi_image_free(texData);
+
+  return true;
+}
+
+bool Texture::LoadTextureA()
+{
+  unsigned char* texData = stbi_load(fileLocation, &width, &height, &bitDepth, 0);
+  if (!texData)
+  {
+    printf("Failed to find %s\n", fileLocation);
+    return false;
   }
 
   glGenTextures(1, &textureID);
@@ -49,6 +84,8 @@ void Texture::LoadTexture()
   // unbind texture
   glBindTexture(GL_TEXTURE_2D, 0);
   stbi_image_free(texData);
+
+  return true;
 }
 
 void Texture::UseTexture()

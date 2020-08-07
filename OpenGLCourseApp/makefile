@@ -1,8 +1,11 @@
 GLM=../includes/GLM
+ASSIMP=../includes/ASSIMP/include
 CC=g++
 CFLAGS=-o main.out -lGL -lGLU -lglfw3 -lGLEW -lX11 \
 			 -lXxf86vm -lXrandr -lpthread -lXi \
-			 -ldl -lXinerama -lXcursor -I$(GLM)
+			 -ldl -lXinerama -lXcursor -lassimp \
+			 -I$(GLM) -I$(ASSIMP)
+
 CPP=main.cpp \
 		Mesh.cpp \
 		Shader.cpp \
@@ -13,9 +16,9 @@ CPP=main.cpp \
 		Material.cpp \
 		DirectionalLight.cpp \
 		PointLight.cpp \
-		SpotLight.cpp
+		SpotLight.cpp \
+		Model.cpp
 
-# LIBS=-L../includes/GLEW/lib
 
 opengl: $(CPP)
 	$(CC) $(CPP) $(CFLAGS)

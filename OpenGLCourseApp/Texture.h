@@ -9,10 +9,12 @@ class Texture
 {
   public:
     Texture();
-    Texture(char* fileLoc);
+    Texture(const char* fileLoc);
     ~Texture();
 
-    void LoadTexture();
+    bool LoadTexture();   // load non-alpha
+    bool LoadTextureA();  // load with alpha
+
     void UseTexture();
     void ClearTexture();
 
@@ -20,5 +22,5 @@ class Texture
     GLuint textureID;
     int width, height, bitDepth;
 
-    char* fileLocation;
+    const char* fileLocation;
 };
