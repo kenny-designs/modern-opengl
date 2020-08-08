@@ -17,7 +17,8 @@ CPP=main.cpp \
 		DirectionalLight.cpp \
 		PointLight.cpp \
 		SpotLight.cpp \
-		Model.cpp
+		Model.cpp \
+		ShadowMap.cpp
 
 
 opengl: $(CPP)

@@ -71,7 +71,13 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
 
   float shadow = current > closest ? 1.0f : 0.0f;
 
-  return shadow
+  // if beyond far plane, don't place shadow
+  if (projCoords.z > 1.0f)
+  {
+    shadow = 0.0f;
+  }
+
+  return shadow;
 }
 
 vec4 CalcLightByDirection(Light light, vec3 direction, float shadowFactor)

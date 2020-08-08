@@ -187,8 +187,8 @@ void CreateShaders()
 
   directionalShadowShader = Shader();
   directionalShadowShader.CreateFromFiles(
-      "Textures/directional_shadow_map.vert",
-      "Textures/directional_shadow_map.frag");
+      "Shaders/directional_shadow_map.vert",
+      "Shaders/directional_shadow_map.frag");
 }
 
 void RenderScene()
@@ -248,7 +248,9 @@ void DirectionalShadowMapPass(DirectionalLight* light)
   glClear(GL_DEPTH_BUFFER_BIT);
 
   uniformModel = directionalShadowShader.GetModelLocation();
-  directionalShadowShader.SetDirectionalLightTransform(&light->CalculateLightTransform());
+  //directionalShadowShader.SetDirectionalLightTransform(&light->CalculateLightTransform());
+  auto foo = light->CalculateLightTransform();
+  directionalShadowShader.SetDirectionalLightTransform(&foo);
 
   RenderScene();
 
@@ -286,7 +288,10 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
   shaderList[0].SetDirectionalLight(&mainLight);
   shaderList[0].SetPointLights(pointLights, pointLightCount);
   shaderList[0].SetSpotLights(spotLights, spotLightCount);
-  shaderList[0].SetDirectionalLightTransform(&mainLight.CalculateLightTransform());
+
+  //shaderList[0].SetDirectionalLightTransform(&mainLight.CalculateLightTransform());
+  auto foo = mainLight.CalculateLightTransform();
+  shaderList[0].SetDirectionalLightTransform(&foo);
 
   mainLight.GetShadowMap()->Read(GL_TEXTURE1);
   shaderList[0].SetTexture(0);
@@ -294,7 +299,7 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 
   glm::vec3 lowerLight = camera.getCameraPosition();
   lowerLight.y -= 0.3f;
-  spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
+  //spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
 
   RenderScene();
 }
@@ -335,7 +340,7 @@ int main()
   mainLight = DirectionalLight(
       1024, 1024,
       1.0f, 1.0f, 1.0f,
-      0.3f, 0.6f,
+      0.1f, 0.6f,
       2.0f, -1.0f, -2.0f);
 
   // Setup spot lights
