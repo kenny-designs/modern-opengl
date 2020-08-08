@@ -338,10 +338,10 @@ int main()
   blackhawk.LoadModel("Models/uh60.obj");
 
   mainLight = DirectionalLight(
-      1024, 1024,
+      2048, 2048,
       1.0f, 1.0f, 1.0f,
       0.1f, 0.6f,
-      2.0f, -1.0f, -2.0f);
+      0.0f, -2.0f, -3.0f);
 
   // Setup spot lights
   pointLights[0] = PointLight(
