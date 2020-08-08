@@ -29,9 +29,19 @@
 // Window dimensions
 const float toRadians = 3.14159265f / 180.0f;
 
+// Uniform globals used for rendering
+GLuint uniformProjection = 0,
+       uniformModel = 0,
+       uniformView = 0,
+       uniformEyePosition = 0,
+       uniformSpecularIntensity = 0,
+       uniformShininess = 0;
+
 Window mainWindow;
 std::vector<Mesh*> meshList;
 std::vector<Shader> shaderList;
+Shader directionalShadowShader;
+
 Camera camera;
 
 Texture brickTexture;
@@ -47,6 +57,9 @@ Model blackhawk;
 DirectionalLight mainLight;
 PointLight pointLights[MAX_POINT_LIGHTS];
 SpotLight spotLights[MAX_SPOT_LIGHTS];
+
+unsigned int pointLightCount = 0;
+unsigned int spotLightCount = 0;
 
 GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
@@ -134,9 +147,9 @@ void CreateObjects()
     // nx, ny, and nz is for the normals
     // x,     y,    z,      u,    v     nx    ny    nz
     -1.0f, -1.0f, -0.6f,   0.0f, 0.0f,   0.0f, 0.0f, 0.0f,
-     0.0f, -1.0f, 1.0f,   0.5f, 0.0f,   0.0f, 0.0f, 0.0f,
-     1.0f, -1.0f, -0.6f,   1.0f, 0.0f,   0.0f, 0.0f, 0.0f,
-     0.0f,  1.0f, 0.0f,   0.5f, 1.0f,   0.0f, 0.0f, 0.0f
+    0.0f, -1.0f, 1.0f,   0.5f, 0.0f,   0.0f, 0.0f, 0.0f,
+    1.0f, -1.0f, -0.6f,   1.0f, 0.0f,   0.0f, 0.0f, 0.0f,
+    0.0f,  1.0f, 0.0f,   0.5f, 1.0f,   0.0f, 0.0f, 0.0f
   };
 
   unsigned int floorIndices[] = {
@@ -171,6 +184,119 @@ void CreateShaders()
   Shader *shader1 = new Shader();
   shader1->CreateFromFiles(vShader, fShader);
   shaderList.push_back(*shader1);
+
+  directionalShadowShader = Shader();
+  directionalShadowShader.CreateFromFiles(
+      "Textures/directional_shadow_map.vert",
+      "Textures/directional_shadow_map.frag");
+}
+
+void RenderScene()
+{
+  // Position and draw the first mesh
+  glm::mat4 model(1.0f);
+  model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.5f));
+  model = glm::rotate(model, 0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+  glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+  brickTexture.UseTexture();
+  shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+  meshList[0]->RenderMesh();
+
+  // Position and draw the second mesh
+  model = glm::mat4(1.0f);
+  model = glm::translate(model, glm::vec3(0.0f, 4.0f, -2.5f));
+  model = glm::rotate(model, 0.0f, glm::vec3(0.0f, -1.0f, 0.0f));
+  glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+  dirtTexture.UseTexture();
+  dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+  meshList[1]->RenderMesh();
+
+  // Position and draw the third mesh
+  model = glm::mat4(1.0f);
+  model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
+  glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+  dirtTexture.UseTexture();
+  shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+  meshList[2]->RenderMesh();
+
+  // Render the xwing model
+  model = glm::mat4(1.0f);
+  model = glm::translate(model, glm::vec3(-7.0f, 0.0f, 10.0f));
+  model = glm::scale(model, glm::vec3(0.006, 0.006f, 0.006f));
+  glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+  shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+  xwing.RenderModel();
+
+  // Render the blackhawk model
+  model = glm::mat4(1.0f);
+  model = glm::translate(model, glm::vec3(-3.0f, 2.0f, 0.0f));
+  model = glm::rotate(model, -90.0f * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
+  model = glm::scale(model, glm::vec3(0.4, 0.4f, 0.4f));
+  glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+  shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+  blackhawk.RenderModel();
+}
+
+void DirectionalShadowMapPass(DirectionalLight* light)
+{
+  directionalShadowShader.UseShader();
+  glViewport(0, 0,
+      light->GetShadowMap()->GetShadowWidth(),
+      light->GetShadowMap()->GetShadowHeight());
+
+  light->GetShadowMap()->Write();
+  glClear(GL_DEPTH_BUFFER_BIT);
+
+  uniformModel = directionalShadowShader.GetModelLocation();
+  directionalShadowShader.SetDirectionalLightTransform(&light->CalculateLightTransform());
+
+  RenderScene();
+
+  // unbind
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
+{
+  shaderList[0].UseShader();
+
+  uniformModel = shaderList[0].GetModelLocation();
+  uniformProjection = shaderList[0].GetProjectionLocation();
+  uniformView = shaderList[0].GetViewLocation();
+  uniformEyePosition = shaderList[0].GetEyePositionLocation();
+  uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
+  uniformShininess = shaderList[0].GetShininessLocation();
+
+  glViewport(0, 0, 1024, 768);
+
+  // Clear window
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  // the Position of these two lines doesn't matter so long as they are done
+  // before the very first draw
+  glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projectionMatrix));
+  glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(viewMatrix));
+  glUniform3f(uniformEyePosition,
+      camera.getCameraPosition().x,
+      camera.getCameraPosition().y,
+      camera.getCameraPosition().z);
+
+  // Use our light source
+  shaderList[0].SetDirectionalLight(&mainLight);
+  shaderList[0].SetPointLights(pointLights, pointLightCount);
+  shaderList[0].SetSpotLights(spotLights, spotLightCount);
+  shaderList[0].SetDirectionalLightTransform(&mainLight.CalculateLightTransform());
+
+  mainLight.GetShadowMap()->Read(GL_TEXTURE1);
+  shaderList[0].SetTexture(0);
+  shaderList[0].SetDirectionalShadowMap(1);
+
+  glm::vec3 lowerLight = camera.getCameraPosition();
+  lowerLight.y -= 0.3f;
+  spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
+
+  RenderScene();
 }
 
 int main()
@@ -206,12 +332,13 @@ int main()
   blackhawk = Model();
   blackhawk.LoadModel("Models/uh60.obj");
 
-  mainLight = DirectionalLight(1.0f, 1.0f, 1.0f,
+  mainLight = DirectionalLight(
+      1024, 1024,
+      1.0f, 1.0f, 1.0f,
       0.3f, 0.6f,
       2.0f, -1.0f, -2.0f);
 
   // Setup spot lights
-  unsigned int pointLightCount = 0;
   pointLights[0] = PointLight(
       0.0f, 0.0f, 1.0f,
       0.0f, 0.1f,
@@ -227,7 +354,6 @@ int main()
   pointLightCount++;
 
   // Setup point lights
-  unsigned int spotLightCount = 0;
   spotLights[0] = SpotLight(
       1.0f, 1.0f, 1.0f,
       0.0f, 2.0f,
@@ -245,13 +371,6 @@ int main()
       1.0f, 0.0f, 0.0f,
       20.0f);
   spotLightCount++;
-
-  GLuint uniformProjection = 0,
-         uniformModel = 0,
-         uniformView = 0,
-         uniformEyePosition = 0,
-         uniformSpecularIntensity = 0,
-         uniformShininess = 0;
 
   // Prepare the projection matrix
   glm::mat4 projection = glm::perspective(
@@ -274,80 +393,8 @@ int main()
     camera.keyControl(mainWindow.getKeys(), deltaTime);
     camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
 
-    // Clear window
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // use our shader program
-    shaderList[0].UseShader();
-    uniformModel = shaderList[0].GetModelLocation();
-    uniformProjection = shaderList[0].GetProjectionLocation();
-    uniformView = shaderList[0].GetViewLocation();
-    uniformEyePosition = shaderList[0].GetEyePositionLocation();
-    uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
-    uniformShininess = shaderList[0].GetShininessLocation();
-
-    glm::vec3 lowerLight = camera.getCameraPosition();
-    lowerLight.y -= 0.3f;
-    //spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
-
-    // Use our light source
-    shaderList[0].SetDirectionalLight(&mainLight);
-    shaderList[0].SetPointLights(pointLights, pointLightCount);
-    shaderList[0].SetSpotLights(spotLights, spotLightCount);
-
-    // the Position of these two lines doesn't matter so long as they are done
-    // before the very first draw
-    glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
-    glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.calculateViewMatrix()));
-    glUniform3f(uniformEyePosition,
-        camera.getCameraPosition().x,
-        camera.getCameraPosition().y,
-        camera.getCameraPosition().z);
-
-    // Position and draw the first mesh
-    glm::mat4 model(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.5f));
-    model = glm::rotate(model, 0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
-    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-    brickTexture.UseTexture();
-    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    meshList[0]->RenderMesh();
-
-    // Position and draw the second mesh
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, 4.0f, -2.5f));
-    model = glm::rotate(model, 0.0f, glm::vec3(0.0f, -1.0f, 0.0f));
-    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-    dirtTexture.UseTexture();
-    dullMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    meshList[1]->RenderMesh();
-
-    // Position and draw the third mesh
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -2.0f, 0.0f));
-    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-    dirtTexture.UseTexture();
-    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    meshList[2]->RenderMesh();
-
-    // Render the xwing model
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(-7.0f, 0.0f, 10.0f));
-    model = glm::scale(model, glm::vec3(0.006, 0.006f, 0.006f));
-    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    xwing.RenderModel();
-
-    // Render the blackhawk model
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(-3.0f, 2.0f, 0.0f));
-    model = glm::rotate(model, -90.0f * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.4, 0.4f, 0.4f));
-    glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-    shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
-    blackhawk.RenderModel();
-
+    DirectionalShadowMapPass(&mainLight);
+    RenderPass(projection, camera.calculateViewMatrix());
 
     // remove our shader program
     glUseProgram(0);
