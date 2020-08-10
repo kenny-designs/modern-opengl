@@ -65,7 +65,6 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
   vec3 projCoords = DirectionalLightSpacePos.xyz / DirectionalLightSpacePos.w;
   projCoords = (projCoords * 0.5) + 0.5; // keep values between 0 and 1
  
-  // r is for depth
   float current = projCoords.z;
 
   vec3 normal = normalize(Normal);
@@ -79,6 +78,7 @@ float CalcDirectionalShadowFactor(DirectionalLight light)
   {
     for (int y = -1; y <= 1; ++y)
     {
+      // r is for depth
       float pcfDepth = texture(directionalShadowMap, projCoords.xy + vec2(x, y) * texelSize).r;
       shadow += current - bias > pcfDepth ? 1.0f : 0.0f;
     }
