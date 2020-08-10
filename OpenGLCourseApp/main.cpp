@@ -64,6 +64,8 @@ unsigned int spotLightCount = 0;
 GLfloat deltaTime = 0.0f;
 GLfloat lastTime = 0.0f;
 
+GLfloat blackhawkAngle = 0.0f;
+
 // Vertex Shader
 static const char* vShader = "Shaders/shader.vert";
 
@@ -227,9 +229,18 @@ void RenderScene()
   shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
   xwing.RenderModel();
 
+  // move the blackhawk model
+  blackhawkAngle += 0.1f;
+  if (blackhawkAngle > 360.0f)
+  {
+    blackhawkAngle = 0.1f;
+  }
+
   // Render the blackhawk model
   model = glm::mat4(1.0f);
-  model = glm::translate(model, glm::vec3(-3.0f, 2.0f, 0.0f));
+  model = glm::rotate(model, -blackhawkAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+  model = glm::translate(model, glm::vec3(-8.0f, 2.0f, 0.0f));
+  model = glm::rotate(model, -20.0f * toRadians, glm::vec3(0.0f, 0.0f, 1.0f));
   model = glm::rotate(model, -90.0f * toRadians, glm::vec3(1.0f, 0.0f, 0.0f));
   model = glm::scale(model, glm::vec3(0.4, 0.4f, 0.4f));
   glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
@@ -249,7 +260,7 @@ void DirectionalShadowMapPass(DirectionalLight* light)
 
   uniformModel = directionalShadowShader.GetModelLocation();
   //directionalShadowShader.SetDirectionalLightTransform(&light->CalculateLightTransform());
-  auto foo = light->CalculateLightTransform();
+  glm::mat4 foo = light->CalculateLightTransform();
   directionalShadowShader.SetDirectionalLightTransform(&foo);
 
   RenderScene();
@@ -258,7 +269,7 @@ void DirectionalShadowMapPass(DirectionalLight* light)
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
+void RenderPass(glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
 {
   shaderList[0].UseShader();
 
@@ -290,7 +301,7 @@ void RenderPass(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
   shaderList[0].SetSpotLights(spotLights, spotLightCount);
 
   //shaderList[0].SetDirectionalLightTransform(&mainLight.CalculateLightTransform());
-  auto foo = mainLight.CalculateLightTransform();
+  glm::mat4 foo = mainLight.CalculateLightTransform();
   shaderList[0].SetDirectionalLightTransform(&foo);
 
   mainLight.GetShadowMap()->Read(GL_TEXTURE1);
@@ -340,8 +351,8 @@ int main()
   mainLight = DirectionalLight(
       2048, 2048,
       1.0f, 1.0f, 1.0f,
-      0.1f, 0.6f,
-      0.0f, -2.0f, -3.0f);
+      0.1f, 0.3f,
+      0.0f, -7.0f, -1.0f);
 
   // Setup spot lights
   pointLights[0] = PointLight(
@@ -379,8 +390,8 @@ int main()
 
   // Prepare the projection matrix
   glm::mat4 projection = glm::perspective(
-      45.0f,
-      mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 
+      glm::radians(45.0f),
+      (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 
       0.1f,
       100.0f);
 
@@ -399,10 +410,7 @@ int main()
     camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
 
     DirectionalShadowMapPass(&mainLight);
-    RenderPass(projection, camera.calculateViewMatrix());
-
-    // remove our shader program
-    glUseProgram(0);
+    RenderPass(camera.calculateViewMatrix(), projection);
 
     mainWindow.swapBuffers();
   }

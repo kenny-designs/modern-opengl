@@ -20,15 +20,15 @@ bool ShadowMap::Init(GLuint width, GLuint height)
       0, GL_DEPTH_COMPONENT, shadowWidth, shadowHeight,
       0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
 
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-  float bColor[] = { 1.0f, 1.0f, 1.0f };
-  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, bColor);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+  glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
-  glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap, 0);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, FBO);
+  glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, shadowMap, 0);
 
   glDrawBuffer(GL_NONE);
   glReadBuffer(GL_NONE);
@@ -48,7 +48,7 @@ bool ShadowMap::Init(GLuint width, GLuint height)
 
 void ShadowMap::Write()
 {
-  glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, FBO);
 }
 
 void ShadowMap::Read(GLenum textureUnit)
