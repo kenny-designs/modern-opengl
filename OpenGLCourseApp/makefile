@@ -18,7 +18,8 @@ CPP=main.cpp \
 		PointLight.cpp \
 		SpotLight.cpp \
 		Model.cpp \
-		ShadowMap.cpp
+		ShadowMap.cpp \
+		OmniShadowMap.cpp
 
 
 opengl: $(CPP)
