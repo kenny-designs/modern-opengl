@@ -91,7 +91,7 @@ bool Texture::LoadTextureA()
 void Texture::UseTexture()
 {
   // this is referring to the Texture Unit 0
-  glActiveTexture(GL_TEXTURE0);
+  glActiveTexture(GL_TEXTURE1);
   glBindTexture(GL_TEXTURE_2D, textureID);
 }
 

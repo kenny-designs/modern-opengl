@@ -274,6 +274,8 @@ void DirectionalShadowMapPass(DirectionalLight* light)
   glm::mat4 foo = light->CalculateLightTransform();
   directionalShadowShader.SetDirectionalLightTransform(&foo);
 
+  directionalShadowShader.Validate();
+
   RenderScene();
 
   // unbind
@@ -300,6 +302,8 @@ void OmniShadowMapPass(PointLight* light)
       light->GetPosition().z);
   glUniform1f(uniformFarPlane, light->GetFarPlane());
   omniShadowShader.SetLightMatrices(light->CalculateLightTransform());
+
+  omniShadowShader.Validate();
 
   RenderScene();
 
@@ -335,20 +339,22 @@ void RenderPass(glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
 
   // Use our light source
   shaderList[0].SetDirectionalLight(&mainLight);
-  shaderList[0].SetPointLights(pointLights, pointLightCount);
-  shaderList[0].SetSpotLights(spotLights, spotLightCount);
+  shaderList[0].SetPointLights(pointLights, pointLightCount, 3, 0);
+  shaderList[0].SetSpotLights(spotLights, spotLightCount, 3 + pointLightCount, pointLightCount);
 
   //shaderList[0].SetDirectionalLightTransform(&mainLight.CalculateLightTransform());
   glm::mat4 foo = mainLight.CalculateLightTransform();
   shaderList[0].SetDirectionalLightTransform(&foo);
 
-  mainLight.GetShadowMap()->Read(GL_TEXTURE1);
-  shaderList[0].SetTexture(0);
-  shaderList[0].SetDirectionalShadowMap(1);
+  mainLight.GetShadowMap()->Read(GL_TEXTURE2);
+  shaderList[0].SetTexture(1);
+  shaderList[0].SetDirectionalShadowMap(2);
 
   glm::vec3 lowerLight = camera.getCameraPosition();
   lowerLight.y -= 0.3f;
-  //spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
+  spotLights[0].SetFlash(lowerLight, camera.getCameraDirection());
+  
+  shaderList[0].Validate();
 
   RenderScene();
 }
@@ -400,7 +406,7 @@ int main()
       0.0f, 0.1f,
       0.0f, 0.0f, 0.0f,
       0.3f, 0.2f, 0.1f);
-  pointLightCount++;
+  //pointLightCount++;
 
   pointLights[1] = PointLight(
       1024, 1024,

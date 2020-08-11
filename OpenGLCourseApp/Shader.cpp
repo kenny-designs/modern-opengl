@@ -83,7 +83,10 @@ void Shader::SetDirectionalLight(DirectionalLight* dLight)
       uniformDirectionalLight.uniformDirection);
 }
 
-void Shader::SetPointLights(PointLight* pLight, unsigned int lightCount)
+void Shader::SetPointLights(PointLight* pLight,
+    unsigned int lightCount,
+    unsigned int textureUnit,
+    unsigned int offset)
 {
   if (lightCount > MAX_POINT_LIGHTS)
   {
@@ -102,10 +105,19 @@ void Shader::SetPointLights(PointLight* pLight, unsigned int lightCount)
         uniformPointLight[i].uniformConstant,
         uniformPointLight[i].uniformLinear,
         uniformPointLight[i].uniformExponent);
+
+    pLight[i].GetShadowMap()->Read(GL_TEXTURE0 + textureUnit + i);
+    // notice, we don't use GL_TEXTURE0. It doesn't have to be an enum type!
+    // also, GL_TEXTURE0 is actually 0x84C0. So, we're not starting from 0 anyways.
+    glUniform1i(uniformOmniShadowMap[i + offset].shadowMap, textureUnit + i);
+    glUniform1i(uniformOmniShadowMap[i + offset].farPlane, pLight[i].GetFarPlane());
   }
 }
 
-void Shader::SetSpotLights(SpotLight* sLight, unsigned int lightCount)
+void Shader::SetSpotLights(SpotLight* sLight,
+    unsigned int lightCount,
+    unsigned int textureUnit,
+    unsigned int offset)
 {
   if (lightCount > MAX_SPOT_LIGHTS)
   {
@@ -126,6 +138,10 @@ void Shader::SetSpotLights(SpotLight* sLight, unsigned int lightCount)
         uniformSpotLight[i].uniformLinear,
         uniformSpotLight[i].uniformExponent,
         uniformSpotLight[i].uniformEdge);
+
+    sLight[i].GetShadowMap()->Read(GL_TEXTURE0 + textureUnit + i);
+    glUniform1i(uniformOmniShadowMap[i + offset].shadowMap, textureUnit + i);
+    glUniform1i(uniformOmniShadowMap[i + offset].farPlane, sLight[i].GetFarPlane());
   }
 }
 
@@ -209,6 +225,27 @@ void Shader::CreateFromFiles(const char* vertexLocation,
   CompileShader(vertexCode, geometryCode, fragmentCode);
 }
 
+void Shader::Validate()
+{
+  // tracking errors
+  GLint result = 0;
+  GLchar eLog[1024] = { 0 };
+
+  // now we check if the shader works with the current context of OpenGL we're
+  // working with. To do this, we shall validate it!
+  glValidateProgram(shaderID);
+  glGetProgramiv(shaderID, GL_VALIDATE_STATUS, &result);
+
+  // if result is 0, then something went wrong!
+  if (!result)
+  {
+    // get the error log
+    glGetProgramInfoLog(shaderID, sizeof(eLog), NULL, eLog);
+    printf("Error validating program: '%s'\n", eLog);
+    return;
+  }
+}
+
 std::string Shader::ReadFile(const char* fileLocation)
 {
   std::string content;
@@ -287,20 +324,6 @@ void Shader::CompileProgram()
     // get the error log
     glGetProgramInfoLog(shaderID, sizeof(eLog), NULL, eLog);
     printf("Error linking program: '%s'\n", eLog);
-    return;
-  }
-
-  // now we check if the shader works with the current context of OpenGL we're
-  // working with. To do this, we shall validate it!
-  glValidateProgram(shaderID);
-  glGetProgramiv(shaderID, GL_VALIDATE_STATUS, &result);
-
-  // if result is 0, then something went wrong!
-  if (!result)
-  {
-    // get the error log
-    glGetProgramInfoLog(shaderID, sizeof(eLog), NULL, eLog);
-    printf("Error validating program: '%s'\n", eLog);
     return;
   }
 
@@ -412,6 +435,18 @@ void Shader::CompileProgram()
 
     snprintf(locBuff, sizeof(locBuff), "lightMatrices[%d]", i);
     uniformLightMatrices[i] = glGetUniformLocation(shaderID, locBuff);
+  }
+
+  // Get the uniforms for the omni shadows
+  for (size_t i = 0; i < MAX_POINT_LIGHTS + MAX_SPOT_LIGHTS; i++)
+  {
+    char locBuff[100] = { '\0' };
+
+    snprintf(locBuff, sizeof(locBuff), "omniShadowMaps[%d].shadowMap", i);
+    uniformOmniShadowMap[i].shadowMap = glGetUniformLocation(shaderID, locBuff);
+
+    snprintf(locBuff, sizeof(locBuff), "omniShadowMaps[%d].farPlane", i);
+    uniformOmniShadowMap[i].farPlane = glGetUniformLocation(shaderID, locBuff);
   }
 }
 
