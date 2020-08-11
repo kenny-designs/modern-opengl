@@ -1,0 +1,170 @@
+Content-Type: text/x-zim-wiki
+Wiki-Format: zim 0.4
+Creation-Date: 2020-08-10T17:59:54-04:00
+
+====== Omnidirectional Shadows Cube Maps and the Geometry Shader ======
+Created Monday 10 August 2020
+
+==== Omnidirectional Shadow Maps ====
+* Used for Point Lights and Spot Lights.
+* Basic theory same as regular Shadow Maps...
+* But need to handle shadows in EVERY direction!
+	* Notice how in the image below that the shadows get wider from the point light. So, we won't be using orthographic projection as we did with the directional light shadows.
+* Can't just use a single texture.
+* Need MULTIPLE textures to handle every direction.
+* Solution: A Cubemap.
+
+The below images show what we mean by multiple shadows from a single point:
+{{../images/omni-shadow-map-diagram.png}}
+
+==== Cubemaps ====
+* Type of texture in OpenGL
+* Technically exists as 6 textures (one for each face) but can be referenced in GLSL as if only a single texture.
+* glBindTexture(GL_TEXTURE_CUBE_MAP, depthCubemap);
+	* Generating the texture is the same as with a regular texture. However, When it comes to binding we now use GL_TEXTURE_CUBE_MAP.
+* glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, ...)
+	* Also, now we have to specify which side of the cubemap we are working with.
+* There are six sides in total:
+	* GL_TEXTURE_CUBE_MAP_POSITIVE_X, GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+	* GL_TEXTURE_CUBE_MAP_POSITIVE_Y, GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+	* GL_TEXTURE_CUBE_MAP_POSITIVE_Z, GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+	* Imagine looking at a cube in 3D space, the previous six enums represent each side in 3D space. So then, the positive x would be the side of the cube that is on the positive x axis.
+* Each enum is one increment of the previous, so can loop through with incrementing value.
+
+The following image shows how our cubemap is aligned:
+{{../images/cubemap-example.png}}
+
+==== More on Cubemaps ====
+* Don't actually need to use (u, v) values.
+* Can access point on cube map with direction vector pointing to texel on cube map, from center of cube.
+	* To reiterate, this is as though the cubemap is surrounding our point light.
+* This means we don't need a light transform matrix for each point light!
+* However we need 6 versions of the "projection × view" matrix, one for each of the 6 directions on the cube, for shadow map pass.
+
+==== Omnidirectional Shadow Maps ====
+* Using Perspective Projection
+* glm::perspective(glm::radians(90.0f), aspect, near, far);
+	* Remember the image from earlier with the point light casting shadows. It emits light in all directions from a single point so the resulting shadows need perspective added to them. No more ortho like with the directional light.
+* 90 degree perspective ensures all 360 degrees around one axis can be covered.
+	* In case that seems confusing, he means 90 degrees up, left, right, and down. Altogether, that's 360 degrees
+* Aspect is the width of one side of the cube divided by its height. This SHOULD be "1" for it to work properly! All cube dimensions are EQUAL!
+	* A cube does have equal sides afterall...
+* Near and far decide size of the cube (how far light reaches).
+
+==== More on Omnidirectional Shadow Maps ====
+* Create 6 light transforms with projection matrix, one for each direction.
+* projection * upViewMatrix, projection * downViewMatrix, etc...
+* Create view matrices using light position and direction.
+* E.g.
+	* glm::lookAt(lightPos, lightPos + glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+* Direction is "lightPos + glm::vec3(1.0f, 0.0f, 0.0f)" because it points to the //right//, in other words: In positive x direction.
+* IMPORTANT: These matrices must line up with the Cubemap texture order
+	* POSITIVE_X, NEGATIVE_X, POSITIVE_Y, etc.
+
+==== Geometry Shader ====
+* Vertex Shader only needs to do World Space transformation (i.e. multiply vertex by model matrix).
+* Projection and View will be applied in the Geometry Shader.
+* Geometry Shader is another shader type that happens between Vertex and Fragment shaders.
+* Geometry Shader handles primitives (points, lines, triangles, etc) as opposed to a single vertice.
+	* The nice thing about the Geometry shader is that when we apply shadows we can do it in a single pass. Without the Geometry shader, we'd have to do a shadow pass 6 times manually for each side of the cubemap. That is in addition to our render pass. This is way too computationally intensive! Instead, the Geometry shader makes it so we don't have to do that additional 6 shadow passes. We can just stick to the one shadow pass and render pass that we've been doing.
+
+==== More on Geometry Shader ====
+* Vertex Shader handles invidual vertices...
+* Geometry Shader handles groups of vertices and can manipulate entire primitives.
+* CAn also create entirely NEW primitives.
+* Don't explicitly specify output variable.
+* Instead, use "EmitVertex()" and "EndPrimitive()".
+* EmitVertex(): Creates vertex at location stored in gl_Position.
+* EndPrimitive(): Stores primitive created by last EmitVertex() calls, and starts a new primitive.
+	* So, if we called EmitVertex() three times then EndPrimitive() puts them all together as a single triangle.
+
+The following is an example of the Geometry Shader:
+{{{code: lang="cg" linenumbers="True"
+#version 330
+
+layout (triangles) in;
+layout (triangle_strip, max_vertices=3) out;
+
+void main()
+{
+	for (int i = 0; i < gl_in.length(); i++)
+	{
+		gl_Position = gl_in[i].gl_Position;
+		
+		EmitVertex();
+	}
+	
+	EndPrimitive();
+}
+}}}
+
+* "layout (triangles) in;" specifies incoming primitive type is a triangle.
+* Output is essentially the same but also specifies the number of vertices expected with it. If you output more than the max, they won't be rendered.
+* gl_in stores data for each vertex passed from Vertex Shader.
+
+==== And Even More on the Geometry Shader ====
+* One other value: gl_Layer
+* Since we attach a cubemap to the Framebuffer, the Framebuffer has multiple layers: One for each output texture in the cubemap.
+	* Remember, the framebuffer views things in 2D where else a cubemap is a 3D construct. So, we need to think of things in //layers.//
+* Set the value of gl_Layer to determine which one to write to when calling EmitVertex.
+
+==== Oh Lord There's More on the Geometry Shader ====
+* Why use the Geometry Shader?
+* Using the 6 transformation matrices and reassigning gl_Layer for each face...
+* We can render each object 6 times for each of the directions of the light source...
+* All in one render pass!
+* Alternative: Do 6 shadow render passes and switch out the light transform matrix each time.
+
+==== Using the Shadow Cubemap ====
+* GLSL has type "samplerCube".
+	* As opposed to our usual Sampler2D.
+* Bind Cubemap to this...
+* When using texture, instead of uv co-ordinates, supply a direction vector.
+* Use direction of light source to fragment being checked, no need for a light transform matrix!
+* Using far plane, convert depth value to actual value:
+	* float closest = texture(depthMap, fragToLight).r;
+	* closest *= far_place;
+* Then compare this value to the length of fragToLight (distance from fragment to light source), and use that to determine if in shadow!
+
+==== Multiple Point Lights — Common Mistakes ====
+* In theory it's easy: One samplerCube for each Point Light.
+* Shadow Map pass is done as previously stated.
+* Render pass is also done as previously stated, however...
+* By default, samplers are mapped to Texture Unit 0.
+* If you already have a sampler2D mapped to Unit 0...
+* And you have an array of unused Point Lights...
+* Their samplerCubes will remain as default, i.e. Texture Unit 0!
+* OpenGL forbids different types of sampler to be bound to the same Texture Unit.
+* Solution: Find a way to ensure all sampler types have unique Texture Units.
+
+==== Omnidirectional Shadow Maps — PCF ====
+Remember, PCF stands for **Percentage-Closer Filtering.**
+
+* Essentially the same concept, but with a third dimension (vector has 3 values).
+* Could just do as before, but with third dimension it becomes intensive...
+* And a lot of the samples will be very close to the original!
+* One solution: Pre-defined offset directions that are likely to be well spaced.
+* In coding lesson, we create 20 offset directions and use those.
+* Another optimization: The pre-defined offsets are DIRECTIONS, not relative positions.
+* We can scale how far we sample in a direction.
+* So you can scale how far sample is, based on viewer distance!
+* If user is close: Sample more close to original vector.
+* If user is distant: Sample more distant from original vector.
+* Essentially creating our own filter.
+
+==== Summary ====
+* Omnidirectional Shadows use Cubemaps to map shadows in all directions.
+* Cubemaps are textures consisting of 6 sub-textures.
+* Cubemap texels are referenced by a direction vector.
+* Geometry Shader handles primitives.
+* Geometry Shader can modify primitives and create entirely new ones... we use it to map the cubemap from 6 views, allowing only a single shadow pass per light.
+* Due to nature of cubemaps, no need for light transform matrix in render pass.
+* PCF can use predefined offset directions.
+* PCF can scale offsets based on viewer distance.
+* Need to ensure samplerCubes aren't bound to same texture unit as sampler2D!
+
+
+
+
+
+
